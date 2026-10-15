@@ -1,0 +1,3275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YF-RAG 管理控制台</title>
+<style>
+  :root {
+    --primary:#2563eb; --primary-600:#1d4ed8; --primary-50:#eff6ff;
+    --bg:#f3f6fb; --card:#fff; --border:#e6edf5;
+    --text:#0f172a; --muted:#64748b; --ok:#15803d; --err:#dc2626; --warn:#a16207;
+    --sidebar:#0b1220; --sidebar-text:#94a3b8; --shadow:0 8px 24px rgba(15,23,42,.06);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; }
+  body { font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif; background:var(--bg); color:var(--text); }
+  .app-shell { display:grid; grid-template-columns:248px minmax(0,1fr); min-height:100vh; }
+  .sidebar { background:linear-gradient(180deg,#0b1220 0%,#111827 58%,#0f172a 100%); color:#fff; padding:20px 14px 28px; overflow-y:auto; }
+  .brand { display:flex; gap:12px; align-items:center; padding:2px 8px 18px; border-bottom:1px solid rgba(255,255,255,.08); margin-bottom:16px; }
+  .logo {
+    width:38px; height:38px; border-radius:12px; flex:none;
+    background:linear-gradient(135deg,#60a5fa,#2563eb 55%,#1d4ed8);
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:800; letter-spacing:.04em; box-shadow:0 8px 18px rgba(37,99,235,.35);
+  }
+  .brand h1 { font-size:16px; font-weight:700; letter-spacing:.01em; }
+  .brand .api { display:block; margin-top:3px; font-size:11px; color:#94a3b8; }
+  .nav-group { margin:16px 10px 6px; font-size:11px; color:#64748b; letter-spacing:.12em; text-transform:uppercase; }
+  .sidebar nav button {
+    width:100%; text-align:left; background:transparent; color:var(--sidebar-text); border:none;
+    padding:9px 12px; border-radius:10px; font-size:13px; cursor:pointer; margin-bottom:3px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .sidebar nav button .nav-ico { width:18px; text-align:center; opacity:.7; font-size:13px; }
+  .sidebar nav button:hover { background:rgba(255,255,255,.06); color:#fff; }
+  .sidebar nav button.active { background:linear-gradient(90deg,#2563eb,#1d4ed8); color:#fff; font-weight:600; box-shadow:0 8px 16px rgba(37,99,235,.28); }
+  .sidebar nav button.active .nav-ico { opacity:1; }
+  .workspace { min-width:0; display:flex; flex-direction:column; background:
+    radial-gradient(1200px 280px at 0 -40px, rgba(37,99,235,.08), transparent 60%),
+    var(--bg);
+  }
+  header.topbar {
+    background:rgba(255,255,255,.86); backdrop-filter:blur(16px); border-bottom:1px solid var(--border);
+    padding:16px 28px; display:flex; align-items:center; gap:16px; position:sticky; top:0; z-index:20;
+  }
+  header.topbar h1 { display:none; }
+  .page-head { margin-right:auto; min-width:0; }
+  #pageTitle { font-size:22px; font-weight:750; letter-spacing:-.03em; }
+  #pageSubtitle { margin-top:4px; font-size:12px; color:var(--muted); }
+  header.topbar .api { display:none; }
+  .top-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .user-chip { display:flex; align-items:center; gap:8px; padding:6px 8px 6px 12px; background:#fff; border:1px solid var(--border); border-radius:999px; }
+  .user-chip input { min-width:96px !important; border:none; padding:4px 0; background:transparent; }
+  .user-chip input:focus { outline:none; }
+  main { padding:24px 28px 48px; max-width:1480px; width:100%; }
+  .tab { display:none; } .tab.active { display:block; animation:fade .18s ease; }
+  @keyframes fade { from { opacity:.6; transform:translateY(4px);} to { opacity:1; transform:none;} }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:20px; margin-bottom:16px; box-shadow:var(--shadow); overflow-x:auto; }
+  .card h3 { font-size:15px; margin-bottom:14px; font-weight:700; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px; padding:12px; background:#f8fafc; border:1px solid var(--border); border-radius:14px; }
+  input,select,textarea { padding:8px 10px; border:1px solid var(--border); border-radius:10px; font-size:13px; font-family:inherit; background:#fff; }
+  input:focus,select:focus,textarea:focus { outline:2px solid #bfdbfe; border-color:#93c5fd; }
+  input[type=text],select { min-width:180px; }
+  input[type=number] { width:110px; }
+  textarea { width:100%; min-height:60px; resize:vertical; }
+  button { padding:8px 16px; border:none; border-radius:10px; font-size:13px; cursor:pointer; background:var(--primary); color:#fff; }
+  button:hover { background:var(--primary-600); }
+  button.secondary { background:#e2e8f0; color:var(--text); }
+  button.secondary:hover { background:#cbd5e1; }
+  button.danger { background:#fee2e2; color:var(--err); }
+  button.danger:hover { background:#fecaca; }
+  button.small { padding:4px 10px; font-size:12px; white-space:nowrap; }
+  table { width:100%; border-collapse:separate; border-spacing:0; font-size:13px; overflow:hidden; }
+  th,td { padding:11px 12px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+  th { background:#f8fafc; font-weight:600; color:var(--muted); white-space:nowrap; }
+  tr:hover td { background:#f8fbff; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; }
+  .badge.ok { background:#dcfce7; color:var(--ok); }
+  .badge.warn { background:#fef9c3; color:#a16207; }
+  .badge.err { background:#fee2e2; color:var(--err); }
+  .badge.run { background:#dbeafe; color:var(--primary); }
+  .msg { padding:10px 14px; border-radius:10px; margin:10px 0; font-size:13px; display:none; }
+  .msg.ok { display:block; background:#dcfce7; color:var(--ok); }
+  .msg.err { display:block; background:#fee2e2; color:var(--err); }
+  #chatBox { height:420px; overflow-y:auto; border:1px solid var(--border); border-radius:16px; padding:16px; background:#fff; margin-bottom:10px; }
+  .msg-item { margin-bottom:12px; display:flex; flex-direction:column; }
+  .msg-item .who { font-size:11px; color:var(--muted); margin-bottom:3px; }
+  .msg-item .text { padding:10px 14px; border-radius:14px; max-width:85%; font-size:14px; line-height:1.6; }
+  .msg-item.user { align-items:flex-end; }
+  .msg-item.user .text { background:var(--primary); color:#fff; }
+  .msg-item.ai { align-items:flex-start; }
+  .msg-item.ai .text { background:#f1f5f9; border:1px solid var(--border); }
+  .msg-item.ai .text p { margin:4px 0; }
+  .ref { font-size:11px; color:var(--muted); margin-top:4px; }
+  .chat-input { display:flex; gap:8px; }
+  .chat-input input { flex:1; }
+  .hint { font-size:12px; color:var(--muted); margin-top:6px; }
+  .loading { color:var(--muted); font-size:13px; }
+  .summary-grid { display:grid; grid-template-columns:repeat(4,minmax(120px,1fr)); gap:12px; margin-bottom:16px; }
+  .summary-item { border:1px solid var(--border); border-radius:18px; padding:18px; background:#fff; box-shadow:var(--shadow); border-left:4px solid var(--primary); }
+  .summary-item .label { font-size:12px; color:var(--muted); margin-bottom:6px; }
+  .summary-item .value { font-size:28px; font-weight:760; letter-spacing:-.04em; }
+  .two-col { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; }
+  .three-col { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+  .panel { border:1px solid var(--border); border-radius:16px; padding:16px; background:#fff; }
+  .panel h4 { font-size:14px; margin-bottom:10px; }
+  .detail-actions { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; }
+  .check-list { display:flex; flex-direction:column; gap:8px; font-size:13px; }
+  .check-row { display:flex; align-items:flex-start; gap:8px; justify-content:space-between; border-bottom:1px dashed var(--border); padding-bottom:8px; }
+  .check-row:last-child { border-bottom:none; padding-bottom:0; }
+  .page-gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:10px; }
+  .page-gallery img { width:100%; max-height:180px; object-fit:contain; border:1px solid var(--border); border-radius:8px; background:#f8fafc; }
+  .ref-tabs { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  .ref-block { margin-top:8px; padding:8px; border:1px solid var(--border); border-radius:8px; background:#fff; max-width:720px; }
+  .ref-title { font-size:12px; font-weight:600; color:var(--text); margin-bottom:6px; }
+  .ref-text { font-size:12px; line-height:1.6; color:var(--muted); white-space:pre-wrap; word-break:break-word; max-height:120px; overflow:auto; }
+  .conv-layout { display:grid; grid-template-columns:280px minmax(0,1fr); gap:16px; }
+  .conv-list { height:520px; overflow-y:auto; border:1px solid var(--border); border-radius:16px; background:#fff; }
+  .conv-item { padding:10px 12px; border-bottom:1px solid var(--border); cursor:pointer; }
+  .conv-item:hover,.conv-item.active { background:#eff6ff; }
+  .conv-item .name { font-size:13px; font-weight:600; margin-bottom:4px; }
+  .conv-item .meta { font-size:11px; color:var(--muted); }
+  .nowrap { white-space:nowrap; }
+  @media (max-width:980px) {
+    .app-shell { grid-template-columns:1fr; }
+    .sidebar { display:flex; flex-wrap:wrap; gap:6px; padding:10px; }
+    .brand { width:100%; border:none; margin:0; padding:4px 8px; }
+    .nav-group { display:none; }
+    .sidebar nav { display:flex; flex-wrap:wrap; gap:6px; width:100%; }
+    .sidebar nav button { width:auto; }
+    .summary-grid,.two-col,.three-col,.conv-layout { grid-template-columns:1fr; }
+    header.topbar { flex-wrap:wrap; }
+    main { padding:14px; }
+  }
+  /* ===== 切片查看弹窗 ===== */
+  .mask { position:fixed; inset:0; background:rgba(15,23,42,.5); display:none; align-items:center; justify-content:center; z-index:50; }
+  .mask.show { display:flex; }
+  .modal { width:min(880px,94vw); max-height:86vh; background:#fff; border-radius:10px; box-shadow:0 24px 60px rgba(0,0,0,.3); display:flex; flex-direction:column; overflow:hidden; }
+  .modal-head { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .modal-head h3 { font-size:15px; }
+  .modal-body { flex:1; overflow-y:auto; padding:16px 18px; }
+  .chunk-item { border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:10px; background:#f8fafc; }
+  .chunk-item .chunk-meta { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin-bottom:8px; }
+  .chunk-item .chunk-content { font-size:13px; line-height:1.7; white-space:pre-wrap; word-break:break-all; }
+  .chunk-item .chunk-kw { margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; }
+  .chunk-item .chunk-kw span { font-size:11px; padding:2px 8px; border-radius:10px; background:#dbeafe; color:var(--primary); }
+  .modal-foot { padding:12px 18px; border-top:1px solid var(--border); display:flex; align-items:center; gap:10px; justify-content:flex-end; }
+  .modal-foot .page-info { font-size:13px; color:var(--muted); margin-right:auto; }
+  .nav-filter { width:100%; margin:0 0 10px; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); color:#e2e8f0; min-width:0; }
+  .nav-filter::placeholder { color:#64748b; }
+  .health-strip { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .health-chip { display:flex; align-items:center; gap:6px; padding:8px 12px; border-radius:999px; background:#fff; border:1px solid var(--border); font-size:12px; }
+  .dot { width:8px; height:8px; border-radius:50%; background:#94a3b8; }
+  .dot.ok { background:#16a34a; } .dot.err { background:#dc2626; }
+  .kb-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; }
+  .kb-card { border:1px solid var(--border); border-radius:16px; padding:14px 16px; background:#fff; cursor:pointer; box-shadow:var(--shadow); }
+  .kb-card:hover { border-color:#93c5fd; }
+  .kb-card .name { font-weight:700; margin-bottom:6px; }
+  .kb-card .meta { font-size:12px; color:var(--muted); display:flex; justify-content:space-between; gap:8px; }
+  .quick-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; }
+  .quick-item { border:1px solid var(--border); border-radius:14px; padding:14px; background:#fff; cursor:pointer; text-align:left; color:var(--text); }
+  .quick-item:hover { background:#eff6ff; }
+  .quick-item b { display:block; margin-bottom:4px; }
+  .quick-item span { font-size:12px; color:var(--muted); }
+  .progress { height:8px; background:#e2e8f0; border-radius:99px; overflow:hidden; min-width:80px; }
+  .progress > i { display:block; height:100%; background:linear-gradient(90deg,#60a5fa,#2563eb); }
+  .progress.err > i { background:#dc2626; }
+  .thumb { width:44px; height:44px; object-fit:cover; border-radius:8px; border:1px solid var(--border); background:#f8fafc; cursor:pointer; }
+  .toast-wrap { position:fixed; right:20px; bottom:20px; z-index:80; display:flex; flex-direction:column; gap:8px; }
+  .toast { min-width:220px; max-width:360px; padding:10px 14px; border-radius:12px; background:#0f172a; color:#fff; font-size:13px; box-shadow:0 12px 30px rgba(15,23,42,.25); }
+  .toast.ok { background:#166534; } .toast.err { background:#991b1b; }
+  .empty { padding:28px; text-align:center; color:var(--muted); }
+  .id-cell { font-family:ui-monospace,Consolas,monospace; font-size:11px; color:var(--muted); max-width:140px; overflow:hidden; text-overflow:ellipsis; }
+  .preview-frame { text-align:center; background:#0b1220; border-radius:12px; padding:12px; margin-bottom:12px; }
+  .doc-name { color:var(--text); font-weight:600; cursor:pointer; background:none; border:none; padding:0; text-align:left; font-size:13px; }
+  .doc-name:hover { color:var(--primary); text-decoration:underline; }
+  .file-ico { width:44px; height:44px; border-radius:8px; border:1px solid var(--border); background:#f8fafc; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; }
+  #chatBox .empty { padding:72px 24px; }
+  button:disabled { opacity:.55; cursor:not-allowed; }
+  .name-cell { display:flex; flex-direction:column; gap:2px; }
+  .ops { display:flex; flex-wrap:nowrap; gap:4px; align-items:center; white-space:nowrap; }
+  .status-stack { display:flex; flex-wrap:wrap; gap:4px; align-items:center; min-width:92px; }
+  .more-menu { position:relative; display:inline-block; }
+  .more-menu > summary { list-style:none; cursor:pointer; padding:4px 10px; font-size:12px; border-radius:10px; background:#e2e8f0; color:var(--text); }
+  .more-menu > summary::-webkit-details-marker { display:none; }
+  .more-menu .more-list { position:absolute; right:0; top:110%; background:#fff; border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); padding:6px; z-index:12; min-width:118px; display:flex; flex-direction:column; gap:4px; }
+  .more-menu .more-list button { width:100%; text-align:left; }
+</style>
+</style>
+</head>
+<body>
+<div class="app-shell">
+<aside class="sidebar">
+  <div class="brand">
+    <div class="logo">YF</div>
+    <div>
+      <h1>Vision RAG</h1>
+      <span class="api" id="apiPortLabel">管理控制台</span>
+    </div>
+  </div>
+  <input class="nav-filter" id="navFilter" placeholder="筛选菜单" oninput="filterNav()">
+  <nav>
+    <div class="nav-group">总览</div>
+    <button type="button" data-tab="home" class="active" onclick="switchTab('home')"><span class="nav-ico">⌂</span>首页概览</button>
+    <button type="button" data-tab="exp" onclick="switchTab('exp')"><span class="nav-ico">◎</span>实验检查</button>
+    <button type="button" data-tab="health" onclick="switchTab('health')"><span class="nav-ico">●</span>健康监控</button>
+    <div class="nav-group">资源</div>
+    <button type="button" data-tab="tenant" onclick="switchTab('tenant')"><span class="nav-ico">▣</span>租户管理</button>
+    <button type="button" data-tab="user" onclick="switchTab('user')"><span class="nav-ico">☺</span>用户权限</button>
+    <button type="button" data-tab="model" onclick="switchTab('model')"><span class="nav-ico">⚙</span>模型管理</button>
+    <button type="button" data-tab="kb" onclick="switchTab('kb')"><span class="nav-ico">☰</span>知识库</button>
+    <button type="button" data-tab="doc" onclick="switchTab('doc')"><span class="nav-ico">▦</span>文档管理</button>
+    <button type="button" data-tab="assistantAdmin" onclick="switchTab('assistantAdmin')"><span class="nav-ico">◈</span>助手管理</button>
+    <div class="nav-group">检索问答</div>
+    <button type="button" data-tab="chat" onclick="switchTab('chat')"><span class="nav-ico">›</span>问答对话</button>
+    <button type="button" data-tab="feedback" onclick="switchTab('feedback')"><span class="nav-ico">★</span>反馈评价</button>
+    <button type="button" data-tab="task" onclick="switchTab('task')"><span class="nav-ico">↻</span>任务中心</button>
+    <button type="button" data-tab="strategy" onclick="switchTab('strategy')"><span class="nav-ico">≡</span>检索策略</button>
+    <button type="button" data-tab="debug" onclick="switchTab('debug')"><span class="nav-ico">⌕</span>检索调试</button>
+    <button type="button" data-tab="compare" onclick="switchTab('compare')"><span class="nav-ico">⇄</span>多模式对比</button>
+    <button type="button" data-tab="eval" onclick="switchTab('eval')"><span class="nav-ico">✓</span>评测数据集</button>
+    <div class="nav-group">运营</div>
+    <button type="button" data-tab="usage" onclick="switchTab('usage')"><span class="nav-ico">▤</span>用量统计</button>
+    <button type="button" data-tab="quotaCost" onclick="switchTab('quotaCost')"><span class="nav-ico">¥</span>配额成本</button>
+    <button type="button" data-tab="quality" onclick="switchTab('quality')"><span class="nav-ico">▲</span>质量看板</button>
+    <button type="button" data-tab="safety" onclick="switchTab('safety')"><span class="nav-ico">▣</span>内容安全</button>
+    <button type="button" data-tab="audit" onclick="switchTab('audit')"><span class="nav-ico">☰</span>审计安全</button>
+    <button type="button" data-tab="placeholder" onclick="switchTab('placeholder')"><span class="nav-ico">+</span>快捷入口</button>
+  </nav>
+</aside>
+<div class="workspace">
+<header class="topbar">
+  <div class="page-head">
+    <h2 id="pageTitle">首页概览</h2>
+    <p id="pageSubtitle">租户资源、文档索引与页图运行状态</p>
+  </div>
+  <div class="top-actions">
+    <select id="globalTenant" onchange="onTenantChange()" title="当前租户" style="min-width:180px"></select>
+    <div class="user-chip">
+      <input type="text" id="loginUser" placeholder="用户ID" value="admin">
+      <button class="secondary" onclick="login()">登录</button>
+      <button class="secondary" onclick="logout()">退出</button>
+    </div>
+  </div>
+</header>
+<main>
+
+  <!-- ============ 首页概览 Tab ============ -->
+  <div id="tab-home" class="tab active">
+    <div class="health-strip" id="homeHealth"></div>
+    <div class="summary-grid">
+      <div class="summary-item"><div class="label">知识库</div><div class="value" id="homeKbCount">-</div></div>
+      <div class="summary-item"><div class="label">文档</div><div class="value" id="homeDocCount">-</div></div>
+      <div class="summary-item"><div class="label">切片</div><div class="value" id="homeChunkCount">-</div></div>
+      <div class="summary-item"><div class="label">页图</div><div class="value" id="homePageCount">-</div></div>
+    </div>
+    <div class="card">
+      <h3>知识库速览</h3>
+      <div class="kb-cards" id="homeKbCards"><div class="empty">加载中...</div></div>
+    </div>
+    <div class="card">
+      <h3>快捷操作</h3>
+      <div class="quick-grid">
+        <button class="quick-item" onclick="switchTab('doc')"><b>上传文档</b><span>解析文本切片与页图索引</span></button>
+        <button class="quick-item" onclick="switchTab('chat')"><b>开始问答</b><span>查看文本依据和页图引用</span></button>
+        <button class="quick-item" onclick="switchTab('debug')"><b>检索调试</b><span>对比文本/视觉召回</span></button>
+        <button class="quick-item" onclick="switchTab('task')"><b>任务中心</b><span>重试、取消与进度</span></button>
+        <button class="quick-item" onclick="switchTab('health')"><b>健康监控</b><span>组件探活与告警</span></button>
+        <button class="quick-item" onclick="switchTab('exp')"><b>实验检查</b><span>一键验证混合 RAG 闭环</span></button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>一期产品主链路</h3>
+      <div class="check-list">
+        <div class="check-row"><span>模型管理</span><span class="badge ok">已接入 CRUD</span></div>
+        <div class="check-row"><span>知识库管理</span><span class="badge ok">文本 / 视觉 / 混合</span></div>
+        <div class="check-row"><span>文档管理</span><span class="badge ok">上传 / 解析 / 索引状态</span></div>
+        <div class="check-row"><span>会话管理</span><span class="badge ok">按知识库问答</span></div>
+        <div class="check-row"><span>引用溯源</span><span class="badge ok">文本块 / 页图</span></div>
+        <div class="check-row"><span>反馈评价</span><span class="badge ok">有用 / 无用</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 模型管理 Tab ============ -->
+  <div id="tab-tenant" class="tab">
+    <div class="card">
+      <h3>租户配置</h3>
+      <div class="row">
+        <input type="hidden" id="tenantId">
+        <input type="text" id="tenantName" placeholder="租户名称">
+        <input type="text" id="tenantDesc" placeholder="描述" style="flex:1">
+        <select id="tenantStatus"><option value="1">启用</option><option value="0">禁用</option></select>
+        <button onclick="saveTenant()">保存</button>
+        <button class="secondary" onclick="resetTenantForm()">清空</button>
+        <button class="secondary" onclick="loadTenants()">刷新</button>
+      </div>
+      <div class="msg" id="tenantMsg"></div>
+      <table id="tenantTable">
+        <thead><tr><th>ID</th><th>名称</th><th>描述</th><th>状态</th><th>更新时间</th><th>操作</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-user" class="tab">
+    <div class="card">
+      <h3>用户角色</h3>
+      <div class="row">
+        <input type="hidden" id="userRoleId">
+        <input type="text" id="roleTenantId" placeholder="租户ID，默认当前租户">
+        <input type="text" id="roleUserId" placeholder="用户ID，如 admin">
+        <input type="text" id="roleUserName" placeholder="用户名称">
+        <select id="roleName"><option value="admin">admin 管理员</option><option value="editor">editor 编辑者</option><option value="viewer">viewer 查看者</option></select>
+        <select id="roleStatus"><option value="1">启用</option><option value="0">禁用</option></select>
+        <button onclick="saveUserRole()">保存</button>
+        <button class="secondary" onclick="resetUserRoleForm()">清空</button>
+        <button class="secondary" onclick="loadUserRoles()">刷新</button>
+      </div>
+      <div class="msg" id="userRoleMsg"></div>
+      <table id="userRoleTable">
+        <thead><tr><th>租户</th><th>用户ID</th><th>名称</th><th>角色</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ 模型管理 Tab ============ -->
+  <div id="tab-model" class="tab">
+    <div class="card">
+      <h3>模型配置</h3>
+      <div class="row">
+        <input type="hidden" id="modelId">
+        <input type="text" id="modelName" placeholder="模型名称，如 qwen-plus">
+        <select id="modelType">
+          <option value="chat">LLM 对话</option>
+          <option value="vlm">VLM 视觉</option>
+          <option value="embedding">Embedding 向量</option>
+          <option value="rerank">Rerank 重排</option>
+        </select>
+        <input type="text" id="modelFid" list="factoryOptions" placeholder="厂商，如 Tongyi">
+        <datalist id="factoryOptions"></datalist>
+        <input type="number" id="modelMaxTokens" min="0" value="0" title="最大 Token">
+        <select id="modelStatus">
+          <option value="1">启用</option>
+          <option value="0">禁用</option>
+        </select>
+        <button onclick="saveModel()">保存</button>
+        <button class="secondary" onclick="resetModelForm()">清空</button>
+        <button class="secondary" onclick="loadModels()">刷新</button>
+      </div>
+      <div class="msg" id="modelMsg"></div>
+    </div>
+    <div class="card">
+      <h3>厂商配置</h3>
+      <div class="row">
+        <input type="text" id="factoryName" placeholder="厂商名称，如 Tongyi">
+        <input type="text" id="factoryApiBase" placeholder="API Base（可选）" style="flex:1">
+        <input type="text" id="factoryApiKey" placeholder="API Key（留空不更新）">
+        <select id="factoryStatus">
+          <option value="1">启用</option>
+          <option value="0">禁用</option>
+        </select>
+        <button onclick="saveFactory()">保存厂商</button>
+        <button class="secondary" onclick="resetFactoryForm()">清空</button>
+        <button class="secondary" onclick="loadFactories()">刷新</button>
+      </div>
+      <div class="msg" id="factoryMsg"></div>
+      <table id="factoryTable">
+        <thead><tr><th>厂商</th><th>API Base</th><th>API Key</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3>模型列表</h3>
+      <table id="modelTable">
+        <thead><tr><th>模型</th><th>类型</th><th>厂商</th><th>Token</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3>API Key 轮换记录</h3>
+      <button class="secondary" onclick="loadKeyRotations()">刷新轮换记录</button>
+      <table id="keyRotationTable">
+        <thead><tr><th>时间</th><th>厂商</th><th>操作人</th><th>动作</th><th>旧Key</th><th>新Key</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ 知识库 Tab ============ -->
+  <div id="tab-kb" class="tab">
+    <div class="card">
+      <h3>新建知识库</h3>
+      <div class="row">
+        <input type="hidden" id="kbEditId">
+        <input type="text" id="kbName" placeholder="知识库名称（必填）">
+        <input type="text" id="kbDesc" placeholder="描述（可选）" style="flex:1">
+        <select id="kbEmbd">
+          <option value="bge-m3@VLLM2">bge-m3 (向量模型)</option>
+        </select>
+        <select id="kbMode">
+          <option value="hybrid">混合（两路都建）</option>
+          <option value="text">普通文本</option>
+          <option value="vision">视觉多模态</option>
+        </select>
+        <select id="kbVlm">
+          <option value="qwen-vl-plus">qwen-vl-plus</option>
+          <option value="qwen-vl-max">qwen-vl-max</option>
+          <option value="qwen-vl-ocr">qwen-vl-ocr</option>
+        </select>
+        <input type="number" id="kbPageTopN" min="1" max="12" value="3" title="页图召回 TopN">
+        <select id="kbParser">
+          <option value="naive">naive 解析</option>
+          <option value="mineru">mineru 解析</option>
+        </select>
+        <select id="kbChunker">
+          <option value="naive">naive 切分</option>
+          <option value="qa">qa 切分</option>
+        </select>
+        <button onclick="saveKb()">保存</button>
+        <button class="secondary" onclick="resetKbForm()">清空</button>
+      </div>
+      <div class="msg" id="kbMsg"></div>
+    </div>
+    <div class="card">
+      <h3>知识库列表</h3>
+      <div class="row">
+        <input type="text" id="kbSearch" placeholder="按名称筛选" oninput="loadKbs()">
+        <button class="secondary" onclick="loadKbs()">刷新</button>
+      </div>
+      <table id="kbTable">
+        <thead><tr><th>名称</th><th>模式</th><th>VLM/页TopN</th><th>文档数</th><th>切片/页</th><th>解析/切分</th><th>操作</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="card" id="kbAclCard" style="display:none">
+      <h3>知识库授权 <span id="kbAclTitle" class="hint"></span></h3>
+      <div class="row">
+        <input type="hidden" id="aclKbId">
+        <select id="aclSubjectType"><option value="user">用户</option><option value="role">角色</option></select>
+        <input type="text" id="aclSubjectId" placeholder="用户ID或角色名，如 editor">
+        <select id="aclPermission"><option value="read">read 可读</option><option value="write">write 可写</option><option value="admin">admin 管理</option></select>
+        <button onclick="saveKbAcl()">保存授权</button>
+        <button class="secondary" onclick="loadKbAcl()">刷新</button>
+      </div>
+      <div class="msg" id="kbAclMsg"></div>
+      <table id="kbAclTable">
+        <thead><tr><th>主体</th><th>权限</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ 文档 Tab ============ -->
+  <div id="tab-doc" class="tab">
+    <div class="card">
+      <h3>选择知识库 + 上传文档</h3>
+      <div class="row">
+        <select id="docKb" onchange="refreshDocs()"></select>
+        <input type="file" id="docFile" multiple>
+        <button onclick="uploadDocs()">上传</button>
+        <button class="secondary" onclick="runAllDocs()">解析全部</button>
+        <button class="secondary" onclick="refreshDocs()">刷新列表</button>
+      </div>
+      <div class="row">
+        <input type="text" id="docSearch" placeholder="按文件名筛选" oninput="renderDocs()">
+        <select id="docRunFilter" onchange="renderDocs()">
+          <option value="">全部状态</option>
+          <option value="1">完成</option>
+          <option value="2">解析中</option>
+          <option value="0">未解析</option>
+          <option value="3">已取消</option>
+          <option value="-1">失败</option>
+        </select>
+        <select id="docTypeFilter" onchange="renderDocs()">
+          <option value="">全部类型</option>
+          <option value="png">png</option>
+          <option value="pdf">pdf</option>
+          <option value="md">md</option>
+          <option value="docx">docx</option>
+        </select>
+        <select id="docExtraFilter" onchange="renderDocs()">
+          <option value="">全部记录</option>
+          <option value="stale">进度异常</option>
+          <option value="disabled">已停用</option>
+          <option value="vision">有页图</option>
+          <option value="text">有切片</option>
+        </select>
+      </div>
+      <div class="msg" id="docMsg"></div>
+    </div>
+    <div class="card">
+      <h3>文档列表</h3>
+      <table id="docTable">
+        <thead><tr><th>预览</th><th>名称</th><th>状态</th><th>切片/页</th><th>索引</th><th>进度</th><th>操作</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ 实验检查 Tab ============ -->
+  <div id="tab-exp" class="tab">
+    <div class="card">
+      <h3>实验闭环检查</h3>
+      <div class="row">
+        <select id="expKb"></select>
+        <input type="text" id="expQuestion" placeholder="测试问题" style="flex:1" value="液压泵报警代码 E-204 是什么意思，依据来自哪些页面">
+        <button onclick="runExperimentCheck()">开始检查</button>
+        <button class="secondary" onclick="loadExperimentKbSelect()">刷新知识库</button>
+      </div>
+      <div class="hint">检查时会把当前知识库作为 kb_ids 传给问答接口，用于确认：知识库模式、文本切片、视觉页图索引、问答引用页图是否完整连通。</div>
+      <div class="msg" id="expMsg"></div>
+    </div>
+    <div class="summary-grid" id="expSummary">
+      <div class="summary-item"><div class="label">知识库模式</div><div class="value">-</div></div>
+      <div class="summary-item"><div class="label">文档数量</div><div class="value">-</div></div>
+      <div class="summary-item"><div class="label">文本切片</div><div class="value">-</div></div>
+      <div class="summary-item"><div class="label">视觉页图</div><div class="value">-</div></div>
+    </div>
+    <div class="two-col">
+      <div class="panel">
+        <h4>状态检查</h4>
+        <div class="check-list" id="expChecks"></div>
+      </div>
+      <div class="panel">
+        <h4>问答与页图引用</h4>
+        <div id="expAnswer" class="hint">尚未执行检查</div>
+        <div class="page-gallery" id="expImages"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 问答 Tab ============ -->
+  <div id="tab-chat" class="tab">
+    <div class="conv-layout">
+      <div class="card" style="margin-bottom:0">
+        <h3>会话管理</h3>
+        <div class="row">
+          <input type="text" id="chatUserId" placeholder="用户ID" value="admin" style="min-width:120px">
+          <input type="text" id="convSearch" placeholder="筛选会话" oninput="renderConversations()" style="min-width:140px">
+          <button class="secondary" onclick="loadConversations()">刷新</button>
+        </div>
+        <div class="row">
+          <button onclick="newConversation()">新建会话</button>
+          <button class="secondary" onclick="renameConversation()">重命名</button>
+          <button class="secondary" onclick="exportConversation()">导出</button>
+          <button class="danger" onclick="removeConversation()">删除</button>
+        </div>
+        <div class="conv-list" id="conversationList"></div>
+      </div>
+      <div class="card">
+        <h3>RAG 问答</h3>
+        <div class="row">
+          <select id="chatAssistant" style="min-width:160px"></select>
+          <select id="chatKb" style="min-width:240px"></select>
+          <select id="chatModel" style="min-width:200px"></select>
+          <input type="text" id="chatConv" placeholder="会话ID（留空自动创建）">
+        </div>
+        <div id="chatBox"><div class="empty">选择知识库后输入问题，回答会展示文本依据和页图引用。</div></div>
+        <div class="chat-input">
+          <input type="text" id="chatInput" placeholder="输入问题..." onkeydown="if(event.key==='Enter')sendChat()">
+          <button id="chatSendBtn" onclick="sendChat()">发送</button>
+          <button class="secondary" onclick="clearChat()">清空</button>
+        </div>
+        <div class="hint">发送时会把当前知识库作为 kb_ids 传给问答接口；回答中 <span class="badge run">引用</span> 标注文本块或页图来源。</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-assistantAdmin" class="tab">
+    <div class="card">
+      <h3>助手配置</h3>
+      <div class="row">
+        <input type="hidden" id="assistantId">
+        <input type="text" id="assistantKey" placeholder="助手 Key，如 hr_policy">
+        <input type="text" id="assistantName" placeholder="助手名称">
+        <select id="assistantType"><option value="conversation">对话助手</option><option value="task">任务助手</option></select>
+        <input type="text" id="assistantPromptKey" placeholder="提示词 Key，如 chat" value="chat">
+        <select id="assistantModel" style="min-width:200px"></select>
+        <select id="assistantRetrieval" style="min-width:160px"></select>
+        <select id="assistantStatus"><option value="1">启用</option><option value="0">禁用</option></select>
+      </div>
+      <div class="row">
+        <select id="assistantKbs" multiple style="min-width:360px;min-height:86px"></select>
+        <input type="number" id="assistantTopN" min="1" max="20" value="6" title="TopN">
+        <input type="number" id="assistantThreshold" min="0" max="1" step="0.01" value="0.2" title="相似度阈值">
+        <input type="number" id="assistantVectorWeight" min="0" max="1" step="0.01" value="0.3" title="向量权重">
+        <input type="text" id="assistantRerank" placeholder="Rerank 模型，可空">
+      </div>
+      <textarea id="assistantPrologue" placeholder="开场白"></textarea>
+      <div class="row">
+        <button onclick="saveAssistantAdmin()">保存助手</button>
+        <button class="secondary" onclick="resetAssistantAdmin()">清空</button>
+        <button class="secondary" onclick="loadAssistantAdmin()">刷新</button>
+      </div>
+      <div class="msg" id="assistantAdminMsg"></div>
+    </div>
+    <div class="card">
+      <h3>助手列表</h3>
+      <table id="assistantAdminTable">
+        <thead><tr><th>Key</th><th>名称</th><th>类型</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ 反馈评价 Tab ============ -->
+  <div id="tab-feedback" class="tab">
+    <div class="card">
+      <h3>反馈评价</h3>
+      <div class="row">
+        <input type="text" id="feedbackConv" placeholder="按会话ID筛选">
+        <input type="text" id="feedbackUser" placeholder="按用户ID筛选">
+        <button onclick="loadFeedbacks()">查询</button>
+      </div>
+    </div>
+    <div class="card">
+      <table id="feedbackTable">
+        <thead><tr><th>会话</th><th>消息</th><th>用户</th><th>结果</th><th>原因</th><th>备注</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ 更多模块占位 Tab ============ -->
+  <div id="tab-task" class="tab">
+    <div class="card">
+      <h3>任务中心</h3>
+      <div class="row">
+        <select id="taskKb" style="min-width:260px" onchange="loadTasks()"></select>
+        <input type="text" id="taskDocId" placeholder="文档ID（可选）">
+        <select id="taskStatus" onchange="loadTasks()">
+          <option value="">全部任务</option>
+          <option value="done">已完成</option>
+          <option value="running">进行中</option>
+          <option value="fail">失败</option>
+        </select>
+        <button onclick="loadTasks()">查询</button>
+        <button class="secondary" onclick="loadTaskKbSelect()">刷新知识库</button>
+        <label class="hint" style="margin:0"><input type="checkbox" id="taskAuto" checked onchange="syncTaskPoll()"> 自动刷新</label>
+      </div>
+    </div>
+    <div class="card">
+      <table id="taskTable">
+        <thead><tr><th>任务ID</th><th>文档</th><th>类型</th><th>进度</th><th>耗时</th><th>重试</th><th>最近日志</th><th>更新时间</th><th>操作</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-debug" class="tab">
+    <div class="card">
+      <h3>检索调试台</h3>
+      <div class="row">
+        <select id="debugKb"></select>
+        <input type="number" id="debugTopN" min="1" max="20" value="6" title="TopN">
+        <input type="text" id="debugQuestion" placeholder="输入要调试的问题" style="flex:1" value="液压泵报警代码 E-204 是什么意思" onkeydown="if(event.key==='Enter')runRetrievalDebug()">
+        <button onclick="runRetrievalDebug()">调试检索</button>
+      </div>
+      <div class="msg" id="debugMsg"></div>
+    </div>
+    <div class="two-col">
+      <div class="panel">
+        <h4>文本召回</h4>
+        <div id="debugChunks" class="check-list"><span class="hint">等待调试</span></div>
+      </div>
+      <div class="panel">
+        <h4>视觉召回</h4>
+        <div id="debugPages" class="page-gallery"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>上下文预览</h3>
+      <pre id="debugContext" style="white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.6;color:var(--muted)">等待调试</pre>
+    </div>
+  </div>
+
+  <div id="tab-strategy" class="tab">
+    <div class="card">
+      <h3>默认问答检索策略</h3>
+      <div class="row">
+        <select id="strategyMethod" title="检索方法"></select>
+        <input type="number" id="strategyTopN" min="1" max="20" value="6" title="最终上下文 TopN">
+        <input type="number" id="strategyTopK" min="1" max="4096" value="1024" title="ES TopK">
+        <input type="number" id="strategyThreshold" min="0" max="1" step="0.01" value="0.2" title="相似度阈值">
+        <input type="number" id="strategyVectorWeight" min="0" max="1" step="0.01" value="0.3" title="向量权重">
+        <input type="text" id="strategyRerank" placeholder="Rerank 模型 ID，可空">
+        <button onclick="saveRetrievalStrategy()">保存策略</button>
+        <button class="secondary" onclick="loadRetrievalStrategy()">刷新</button>
+      </div>
+      <div class="hint">该策略写入默认 chat 助手，问答、检索调试和评测都会优先使用这组 TopN、阈值、向量权重、Rerank 设置。</div>
+      <div class="msg" id="strategyMsg"></div>
+    </div>
+    <div class="card">
+      <h3>策略说明</h3>
+      <div class="check-list">
+        <div class="check-row"><span>文本优先</span><span class="badge">知识库模式选 text，主要返回文本 chunk</span></div>
+        <div class="check-row"><span>视觉优先</span><span class="badge">知识库模式选 vision，主要返回页图证据</span></div>
+        <div class="check-row"><span>混合输入</span><span class="badge ok">知识库模式选 hybrid，同时返回文本与页图</span></div>
+        <div class="check-row"><span>自动路由</span><span class="badge warn">结合意图识别/问题类型配置，当前以检索调试和多模式对比辅助判断</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-compare" class="tab">
+    <div class="card">
+      <h3>同问题多模式对比</h3>
+      <div class="row">
+        <select id="compareKb"></select>
+        <input type="number" id="compareTopN" min="1" max="20" value="6" title="TopN">
+        <input type="text" id="compareQuestion" placeholder="输入同一个问题，对比文本/视觉/混合召回" style="flex:1" value="液压泵报警代码 E-204 是什么意思">
+        <button onclick="runRetrievalCompare()">开始对比</button>
+        <button class="secondary" onclick="loadCompareKbSelect()">刷新知识库</button>
+      </div>
+      <div class="msg" id="compareMsg"></div>
+    </div>
+    <div class="three-col" id="compareResults"></div>
+  </div>
+
+  <div id="tab-eval" class="tab">
+    <div class="card">
+      <h3>评测问题</h3>
+      <div class="row">
+        <input type="hidden" id="evalId">
+        <select id="evalKb"></select>
+        <input type="text" id="evalQuestion" placeholder="问题" style="flex:1">
+        <input type="text" id="evalExpected" placeholder="期望答案（可选）" style="flex:1">
+        <button onclick="saveEvalQuestion()">保存</button>
+        <button onclick="runEval()">一键运行</button>
+        <button class="secondary" onclick="resetEvalForm()">清空</button>
+        <button class="secondary" onclick="loadEvalQuestions()">刷新</button>
+      </div>
+      <div class="msg" id="evalMsg"></div>
+      <table id="evalTable">
+        <thead><tr><th>知识库</th><th>问题</th><th>期望答案</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3>评测结果 <span id="evalSummary" class="hint"></span></h3>
+      <table id="evalResultTable">
+        <thead><tr><th>时间</th><th>问题</th><th>文本/页图</th><th>期望命中</th><th>得分</th><th>状态</th><th>错误</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-placeholder" class="tab">
+    <div class="card">
+      <h3>快捷入口</h3>
+      <div class="quick-grid">
+        <button class="quick-item" onclick="switchTab('home')"><b>首页概览</b><span>资源统计与健康状态</span></button>
+        <button class="quick-item" onclick="switchTab('kb')"><b>知识库</b><span>文本 / 视觉 / 混合</span></button>
+        <button class="quick-item" onclick="switchTab('doc')"><b>文档管理</b><span>上传、解析、切片、页图</span></button>
+        <button class="quick-item" onclick="switchTab('chat')"><b>问答对话</b><span>引用溯源与反馈</span></button>
+        <button class="quick-item" onclick="switchTab('debug')"><b>检索调试</b><span>文本召回 + 页图召回</span></button>
+        <button class="quick-item" onclick="switchTab('compare')"><b>多模式对比</b><span>同一问题三列对照</span></button>
+        <button class="quick-item" onclick="switchTab('eval')"><b>评测数据集</b><span>期望命中与得分</span></button>
+        <button class="quick-item" onclick="switchTab('task')"><b>任务中心</b><span>重试 / 取消</span></button>
+        <button class="quick-item" onclick="switchTab('health')"><b>健康监控</b><span>组件探活与告警</span></button>
+        <button class="quick-item" onclick="switchTab('audit')"><b>审计安全</b><span>操作留痕</span></button>
+        <button class="quick-item" onclick="switchTab('quality')"><b>质量看板</b><span>满意率与命中率</span></button>
+        <button class="quick-item" onclick="switchTab('exp')"><b>实验检查</b><span>混合 RAG 闭环</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-usage" class="tab">
+    <div class="summary-grid">
+      <div class="summary-item"><div class="label">调用次数</div><div class="value" id="usageCalls">-</div></div>
+      <div class="summary-item"><div class="label">失败次数</div><div class="value" id="usageFailed">-</div></div>
+      <div class="summary-item"><div class="label">Token估算</div><div class="value" id="usageTokens">-</div></div>
+      <div class="summary-item"><div class="label">平均耗时</div><div class="value" id="usageAvg">-</div></div>
+    </div>
+    <div class="card">
+      <h3>用量日志</h3>
+      <div class="row">
+        <input type="text" id="usageUser" placeholder="用户ID过滤">
+        <input type="text" id="usageModel" placeholder="模型过滤">
+        <button onclick="loadUsage()">查询</button>
+      </div>
+      <table id="usageTable">
+        <thead><tr><th>时间</th><th>用户</th><th>模型</th><th>知识库</th><th>Token</th><th>耗时</th><th>状态</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-quotaCost" class="tab">
+    <div class="summary-grid">
+      <div class="summary-item"><div class="label">估算成本</div><div class="value" id="costTotal">-</div></div>
+      <div class="summary-item"><div class="label">文档额度</div><div class="value" id="quotaDoc">-</div></div>
+      <div class="summary-item"><div class="label">Token额度</div><div class="value" id="quotaToken">-</div></div>
+      <div class="summary-item"><div class="label">视觉页额度</div><div class="value" id="quotaVision">-</div></div>
+    </div>
+    <div class="card">
+      <h3>租户配额</h3>
+      <div class="row">
+        <input type="number" id="quotaStorage" min="0" title="存储MB" placeholder="存储MB">
+        <input type="number" id="quotaDocuments" min="0" title="文档数量" placeholder="文档数">
+        <input type="number" id="quotaTokens" min="0" title="Token" placeholder="Token">
+        <input type="number" id="quotaVisionPages" min="0" title="视觉页" placeholder="视觉页">
+        <input type="number" id="quotaModelCalls" min="0" title="模型调用" placeholder="模型调用">
+        <button onclick="saveQuota()">保存配额</button>
+        <button class="secondary" onclick="loadQuotaCost()">刷新</button>
+      </div>
+      <div class="msg" id="quotaCostMsg"></div>
+    </div>
+    <div class="card">
+      <h3>模型成本估算</h3>
+      <table id="costTable">
+        <thead><tr><th>模型</th><th>类型</th><th>调用</th><th>输入Token</th><th>输出Token</th><th>估算成本</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="hint" id="costNote"></div>
+    </div>
+  </div>
+
+  <div id="tab-quality" class="tab">
+    <div class="summary-grid">
+      <div class="summary-item"><div class="label">满意率</div><div class="value" id="qualitySatisfaction">-</div></div>
+      <div class="summary-item"><div class="label">评测均分</div><div class="value" id="qualityScore">-</div></div>
+      <div class="summary-item"><div class="label">期望命中率</div><div class="value" id="qualityHit">-</div></div>
+      <div class="summary-item"><div class="label">引用覆盖率</div><div class="value" id="qualityRef">-</div></div>
+    </div>
+    <div class="card">
+      <h3>质量概览</h3>
+      <button onclick="loadQuality()">刷新质量数据</button>
+      <table id="qualityTable">
+        <thead><tr><th>指标</th><th>数值</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-health" class="tab">
+    <div class="card">
+      <h3>系统健康检查</h3>
+      <button onclick="loadHealth()">刷新健康状态</button>
+      <div class="msg" id="healthMsg"></div>
+      <table id="healthTable">
+        <thead><tr><th>组件</th><th>状态</th><th>说明</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <h3 style="margin-top:16px">告警记录</h3>
+      <table id="alertTable">
+        <thead><tr><th>时间</th><th>级别</th><th>标题</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-safety" class="tab">
+    <div class="card">
+      <h3>内容安全基础检查</h3>
+      <textarea id="safetyText" placeholder="输入需要检查的问题、提示词或文档片段"></textarea>
+      <div class="row">
+        <button onclick="runSafetyCheck()">检查风险</button>
+      </div>
+      <div class="msg" id="safetyMsg"></div>
+      <table id="safetyTable">
+        <thead><tr><th>风险类型</th><th>等级</th><th>命中关键词</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-audit" class="tab">
+    <div class="card">
+      <h3>审计日志</h3>
+      <div class="row">
+        <input type="text" id="auditUser" placeholder="用户ID过滤">
+        <select id="auditAction" onchange="loadAudit()">
+          <option value="">全部操作</option>
+          <option value="create">create</option>
+          <option value="save">save</option>
+          <option value="upload">upload</option>
+          <option value="run">run</option>
+          <option value="delete">delete</option>
+          <option value="login">login</option>
+          <option value="resolve">resolve</option>
+        </select>
+        <select id="auditResource" onchange="loadAudit()">
+          <option value="">全部资源</option>
+          <option value="llm">llm</option>
+          <option value="knowledgebase">knowledgebase</option>
+          <option value="document">document</option>
+          <option value="conversation">conversation</option>
+          <option value="evaluation">evaluation</option>
+        </select>
+        <button onclick="loadAudit()">查询</button>
+      </div>
+      <table id="auditTable">
+        <thead><tr><th>时间</th><th>用户</th><th>操作</th><th>资源</th><th>资源ID</th><th>状态</th><th>详情</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ 切片查看弹窗 ============ -->
+  <div class="mask" id="chunkMask">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>切片列表 <span id="chunkDocName" style="font-weight:400;color:var(--muted);font-size:13px"></span></h3>
+        <button class="secondary small" onclick="closeChunkMask()">关闭</button>
+      </div>
+      <div class="modal-body" id="chunkBody">
+        <div class="loading">加载中...</div>
+      </div>
+      <div class="modal-foot">
+        <span class="page-info" id="chunkPageInfo"></span>
+        <button class="secondary small" onclick="chunkPage(-1)">上一页</button>
+        <button class="secondary small" onclick="chunkPage(1)">下一页</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask" id="docDetailMask">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="docDetailTitle">文档详情</h3>
+        <button class="secondary small" onclick="closeDocDetail()">关闭</button>
+      </div>
+      <div class="modal-body" id="docDetailBody"></div>
+    </div>
+  </div>
+
+  <div class="mask" id="imgPreviewMask" onclick="if(event.target===this)closeImagePreview()">
+    <div class="modal" style="background:#0b1220;width:min(960px,94vw)">
+      <div class="modal-head" style="border-color:rgba(255,255,255,.08);color:#fff">
+        <h3 id="imgPreviewTitle" style="color:#fff">页图预览</h3>
+        <button class="secondary small" onclick="closeImagePreview()">关闭</button>
+      </div>
+      <div class="modal-body" id="imgPreviewBody" style="text-align:center"></div>
+    </div>
+  </div>
+
+</main>
+</div>
+</div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+const API = (location.protocol === "file:") ? "http://127.0.0.1:9380" : location.origin;
+try { const _apiLabel = document.getElementById("apiPortLabel"); if (_apiLabel) _apiLabel.textContent = "管理控制台 · " + new URL(API).host; } catch (e) {}
+const state = { tenantId: "default", authToken: localStorage.getItem("yfAuthToken") || "", kbId: "", conversationId: "", assistantKey: "chat", assistants: [], models: [], factories: [], tenants: [], userRoles: [], docs: [], conversations: [], evalQuestions: [] };
+
+const TAB_TITLES = {
+  home: "首页概览", tenant: "租户管理", user: "用户权限", model: "模型管理", kb: "知识库",
+  doc: "文档管理", assistantAdmin: "助手管理", chat: "问答对话", feedback: "反馈评价",
+  task: "任务中心", strategy: "检索策略", debug: "检索调试", compare: "多模式对比",
+  eval: "评测数据集", usage: "用量统计", quotaCost: "配额成本", quality: "质量看板",
+  health: "健康监控", safety: "内容安全", audit: "审计安全", exp: "实验检查", placeholder: "快捷入口",
+};
+const TAB_SUBTITLES = {
+  home: "租户资源、文档索引与页图运行状态",
+  tenant: "创建、编辑、停用和删除租户空间",
+  user: "按租户配置用户角色与启停状态",
+  model: "厂商、对话/向量/重排/视觉模型配置",
+  kb: "文本、视觉与混合知识库增删改查",
+  doc: "上传解析文档，查看切片、页图与任务",
+  assistantAdmin: "助手绑定知识库、检索策略与模型",
+  chat: "按知识库发起问答并查看引用溯源",
+  feedback: "有用/无用评价与质量回看",
+  task: "解析、切分与索引任务进度",
+  strategy: "相似度阈值、TopN 与重排策略",
+  debug: "对比文本/视觉/混合召回明细",
+  compare: "同一问题在多种检索模式下的结果",
+  eval: "评测集、期望命中与平均分",
+  usage: "调用次数、Token 与耗时",
+  quotaCost: "配额上限与估算成本",
+  quality: "反馈满意度与评测命中率",
+  health: "组件探活、告警记录与解决",
+  safety: "注入、密钥泄露与越权检测",
+  audit: "操作审计与安全留痕",
+  exp: "知识库模式、切片、页图与问答闭环",
+  placeholder: "一键跳转到常用页面",
+};
+
+function setActiveTab(name) {
+  document.querySelectorAll("[data-tab]").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  const tab = document.getElementById("tab-" + name);
+  if (tab) tab.classList.add("active");
+  const title = document.getElementById("pageTitle");
+  if (title) title.textContent = TAB_TITLES[name] || name;
+  const subtitle = document.getElementById("pageSubtitle");
+  if (subtitle) subtitle.textContent = TAB_SUBTITLES[name] || "";
+}
+
+function switchTab(name) {
+  if (typeof closeImagePreview === "function") closeImagePreview();
+  setActiveTab(name);
+  if (name === "tenant") loadTenants();
+  if (name === "user") loadUserRoles();
+  if (name === "kb") { loadKbs(); loadKbModelOptions(); }
+  if (name === "model") { loadModels(); loadFactories(); loadKbModelOptions(); }
+  if (name === "doc") { loadKbSelect(); }
+  if (name === "assistantAdmin") loadAssistantAdmin();
+  if (name === "home") loadHome();
+  if (name === "chat") { loadAssistants(); loadChatKbSelect(); loadChatModels(); loadConversations(); }
+  if (name === "feedback") loadFeedbacks();
+  if (name === "task") { loadTaskKbSelect().then(() => loadTasks()); }
+  if (name === "strategy") loadRetrievalStrategy();
+  if (name === "debug") loadDebugKbSelect();
+  if (name === "compare") loadCompareKbSelect();
+  if (name === "eval") { loadEvalKbSelect(); loadEvalQuestions(); loadEvalResults(); }
+  if (name === "usage") loadUsage();
+  if (name === "quotaCost") loadQuotaCost();
+  if (name === "quality") loadQuality();
+  if (name === "health") loadHealth();
+  if (name === "safety") document.querySelector("#safetyTable tbody").innerHTML = "";
+  if (name === "audit") loadAudit();
+  if (name === "exp") { loadExperimentKbSelect(); }
+}
+
+async function api(path, opts = {}) {
+  const isForm = opts.body instanceof FormData;
+  const isGet = !opts.method || opts.method === "GET";
+  const userId = document.getElementById("chatUserId")?.value.trim() || "admin";
+  const res = await fetch(API + path, {
+    headers: {
+      ...((isForm || isGet) ? {} : { "Content-Type": "application/json" }),
+      ...(state.authToken ? { "Authorization": "Bearer " + state.authToken } : {}),
+      "X-Tenant-Id": currentTenant(),
+      "X-User-Id": userId,
+    },
+    ...opts,
+  });
+  const text = await res.text();
+  try { return { status: res.status, body: JSON.parse(text) }; }
+  catch { return { status: res.status, body: text }; }
+}
+
+function showMsg(el, text, ok = true) {
+  el.className = "msg " + (ok ? "ok" : "err");
+  el.textContent = text;
+  setTimeout(() => { el.className = "msg"; }, 6000);
+}
+
+function toast(text, ok = true) {
+  const wrap = document.getElementById("toastWrap");
+  if (!wrap) return alert(text);
+  const el = document.createElement("div");
+  el.className = "toast " + (ok ? "ok" : "err");
+  el.textContent = text;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+function filterNav() {
+  const q = (document.getElementById("navFilter")?.value || "").trim().toLowerCase();
+  document.querySelectorAll(".sidebar nav button").forEach(btn => {
+    btn.style.display = !q || (btn.innerText || "").toLowerCase().includes(q) ? "" : "none";
+  });
+}
+
+function mediaUrl(path) {
+  if (!path) return "";
+  const s = String(path);
+  if (s.startsWith("http")) return s;
+  if (s.startsWith("/")) return API + s;
+  return API + "/media/pages/" + s.replace(/^media\/pages\//, "");
+}
+
+function pageSrc(p) {
+  if (!p) return "";
+  if (p.url || p.image) return mediaUrl(p.url || ("/media/pages/" + p.image));
+  const docId = p.document_id || p.doc_id || "";
+  return docId ? API + "/v1/document/image/" + docId : "";
+}
+
+function isImageDoc(d) {
+  const t = String(d?.type || d?.name || "").toLowerCase();
+  return /\.(png|jpe?g|gif|webp|bmp|tif|tiff)$/.test(t) || ["png","jpg","jpeg","gif","webp","bmp","tif","tiff"].includes(t);
+}
+
+function docThumb(d) {
+  if (isImageDoc(d)) {
+    const src = `${API}/v1/document/image/${d.id}`;
+    return `<img class="thumb" src="${src}" alt="" onclick="previewImage('${src}','${escAttr(d.name)}')">`;
+  }
+  const ext = String(d.type || d.name || "file").split(".").pop().slice(0, 4);
+  return `<span class="file-ico">${esc(ext)}</span>`;
+}
+
+function isStaleDoc(d) {
+  return String(d.run) === "1" && Number(d.progress || 0) < 1;
+}
+
+function runBadge(run) {
+  const map = {
+    "1": '<span class="badge ok">完成</span>',
+    "2": '<span class="badge run">解析中</span>',
+    "0": '<span class="badge warn">未解析</span>',
+    "3": '<span class="badge warn">已取消</span>',
+    "-1": '<span class="badge err">报错</span>',
+  };
+  return map[String(run)] || `<span class="badge">${esc(run)}</span>`;
+}
+
+function progressBar(progress, run) {
+  const n = Number(progress || 0);
+  const pct = Math.max(0, Math.min(100, Math.round(n * 100)));
+  const cls = n < 0 || String(run) === "-1" ? "progress err" : "progress";
+  return `<div class="${cls}" title="${pct}%"><i style="width:${pct}%"></i></div><div class="hint">${pct}%</div>`;
+}
+
+async function login() {
+  const user = document.getElementById("loginUser")?.value.trim() || "admin";
+  const r = await api("/v1/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ tenant_id: currentTenant(), user_id: user }),
+  });
+  if (r.body && r.body.code === 0) {
+    state.authToken = r.body.data.token || "";
+    localStorage.setItem("yfAuthToken", state.authToken);
+    document.getElementById("chatUserId").value = user;
+    toast(`登录成功：${user} / ${r.body.data.role}`);
+  } else {
+    toast("登录失败: " + JSON.stringify(r.body), false);
+  }
+}
+
+async function logout() {
+  await api("/v1/auth/logout", { method: "POST", body: JSON.stringify(tenantBody({})) });
+  state.authToken = "";
+  localStorage.removeItem("yfAuthToken");
+  toast("已退出");
+}
+
+function currentTenant() {
+  return document.getElementById("globalTenant")?.value || state.tenantId || "default";
+}
+
+function tenantBody(body = {}) {
+  return { tenant_id: currentTenant(), ...body };
+}
+
+function tenantQuery(extra = {}) {
+  return new URLSearchParams({ tenant_id: currentTenant(), ...extra });
+}
+
+async function loadTenants() {
+  const r = await api("/v1/tenant/list", { method: "GET" });
+  const rows = (r.body && r.body.code === 0 && Array.isArray(r.body.data)) ? r.body.data : [];
+  if (!rows.some(t => t.id === "default")) rows.unshift({ id: "default", name: "默认租户", description: "兼容历史数据", status: "1" });
+  state.tenants = rows;
+  const sel = document.getElementById("globalTenant");
+  const old = currentTenant();
+  if (sel) {
+    sel.innerHTML = rows.filter(t => t.status !== "0").map(t => `<option value="${escAttr(t.id)}">${esc(t.name)} (${esc(t.id)})</option>`).join("");
+    sel.value = rows.some(t => t.id === old) ? old : "default";
+    state.tenantId = sel.value || "default";
+  }
+  const tbody = document.querySelector("#tenantTable tbody");
+  if (tbody) {
+    tbody.innerHTML = rows.map(t => `<tr>
+      <td>${esc(t.id)}</td><td>${esc(t.name)}</td><td>${esc(t.description || "")}</td>
+      <td>${t.status === "1" ? '<span class="badge ok">启用</span>' : '<span class="badge warn">禁用</span>'}</td>
+      <td>${esc(t.update_date || "")}</td>
+      <td><button class="small" onclick="editTenant('${escAttr(t.id)}')">编辑</button>${t.id === "default" ? "" : ` <button class="small danger" onclick="removeTenant('${escAttr(t.id)}')">删除</button>`}</td>
+    </tr>`).join("");
+  }
+}
+
+function onTenantChange() {
+  state.tenantId = currentTenant();
+  const roleTenant = document.getElementById("roleTenantId");
+  if (roleTenant) roleTenant.value = state.tenantId;
+  loadHome(); loadTenants(); loadUserRoles(); loadModels(); loadFactories(); loadKbModelOptions(); loadKbs(); loadKbSelect(); loadChatKbSelect(); loadDebugKbSelect(); loadCompareKbSelect(); loadEvalKbSelect(); loadConversations(); loadFeedbacks(); loadTasks(); loadUsage(); loadQuotaCost(); loadQuality(); loadHealth(); loadAudit(); loadAssistantAdmin();
+}
+
+function editTenant(id) {
+  const t = state.tenants.find(item => item.id === id);
+  if (!t) return;
+  document.getElementById("tenantId").value = t.id || "";
+  document.getElementById("tenantName").value = t.name || "";
+  document.getElementById("tenantDesc").value = t.description || "";
+  document.getElementById("tenantStatus").value = t.status || "1";
+}
+
+function resetTenantForm() {
+  document.getElementById("tenantId").value = "";
+  document.getElementById("tenantName").value = "";
+  document.getElementById("tenantDesc").value = "";
+  document.getElementById("tenantStatus").value = "1";
+}
+
+async function saveTenant() {
+  const body = {
+    id: document.getElementById("tenantId").value.trim(),
+    name: document.getElementById("tenantName").value.trim(),
+    description: document.getElementById("tenantDesc").value.trim(),
+    status: document.getElementById("tenantStatus").value,
+  };
+  if (!body.name) return showMsg(document.getElementById("tenantMsg"), "租户名称不能为空", false);
+  const r = await api("/v1/tenant/save", { method: "POST", body: JSON.stringify(body) });
+  if (r.body && r.body.code === 0) {
+    showMsg(document.getElementById("tenantMsg"), "租户保存成功");
+    resetTenantForm();
+    await loadTenants();
+  } else {
+    showMsg(document.getElementById("tenantMsg"), "保存失败: " + JSON.stringify(r.body), false);
+  }
+}
+
+async function removeTenant(id) {
+  if (!confirm("确认删除租户？该操作会删除租户下用户角色配置。")) return;
+  const r = await api("/v1/tenant/rm", { method: "POST", body: JSON.stringify({ id }) });
+  if (r.body && r.body.code === 0) loadTenants(); else toast("删除失败: " + JSON.stringify(r.body), false);
+}
+
+async function loadUserRoles() {
+  const r = await api("/v1/tenant/user/list?" + tenantQuery(), { method: "GET" });
+  const tbody = document.querySelector("#userRoleTable tbody");
+  if (!tbody) return;
+  if (!(r.body && r.body.code === 0)) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--err)">加载失败: ${esc(JSON.stringify(r.body))}</td></tr>`;
+    return;
+  }
+  state.userRoles = Array.isArray(r.body.data) ? r.body.data : [];
+  tbody.innerHTML = state.userRoles.map(u => `<tr>
+    <td>${esc(u.tenant_id)}</td><td>${esc(u.user_id)}</td><td>${esc(u.user_name || "")}</td><td>${esc(u.role)}</td>
+    <td>${u.status === "1" ? '<span class="badge ok">启用</span>' : '<span class="badge warn">禁用</span>'}</td>
+    <td><button class="small" onclick="editUserRole('${escAttr(u.id)}')">编辑</button> <button class="small danger" onclick="removeUserRole('${escAttr(u.id)}')">删除</button></td>
+  </tr>`).join("");
+  document.getElementById("roleTenantId").value = currentTenant();
+}
+
+function editUserRole(id) {
+  const u = state.userRoles.find(item => item.id === id);
+  if (!u) return;
+  document.getElementById("userRoleId").value = u.id || "";
+  document.getElementById("roleTenantId").value = u.tenant_id || currentTenant();
+  document.getElementById("roleUserId").value = u.user_id || "";
+  document.getElementById("roleUserName").value = u.user_name || "";
+  document.getElementById("roleName").value = u.role || "viewer";
+  document.getElementById("roleStatus").value = u.status || "1";
+}
+
+function resetUserRoleForm() {
+  document.getElementById("userRoleId").value = "";
+  document.getElementById("roleTenantId").value = currentTenant();
+  document.getElementById("roleUserId").value = "";
+  document.getElementById("roleUserName").value = "";
+  document.getElementById("roleName").value = "viewer";
+  document.getElementById("roleStatus").value = "1";
+}
+
+async function saveUserRole() {
+  const body = {
+    id: document.getElementById("userRoleId").value.trim(),
+    tenant_id: document.getElementById("roleTenantId").value.trim() || currentTenant(),
+    user_id: document.getElementById("roleUserId").value.trim(),
+    user_name: document.getElementById("roleUserName").value.trim(),
+    role: document.getElementById("roleName").value,
+    status: document.getElementById("roleStatus").value,
+  };
+  if (!body.user_id) return showMsg(document.getElementById("userRoleMsg"), "用户ID不能为空", false);
+  const r = await api("/v1/tenant/user/save", { method: "POST", body: JSON.stringify(body) });
+  if (r.body && r.body.code === 0) {
+    showMsg(document.getElementById("userRoleMsg"), "用户角色保存成功");
+    resetUserRoleForm();
+    loadUserRoles();
+  } else {
+    showMsg(document.getElementById("userRoleMsg"), "保存失败: " + JSON.stringify(r.body), false);
+  }
+}
+
+async function removeUserRole(id) {
+  if (!confirm("确认删除该用户角色？")) return;
+  const r = await api("/v1/tenant/user/rm", { method: "POST", body: JSON.stringify({ id }) });
+  if (r.body && r.body.code === 0) loadUserRoles(); else toast("删除失败: " + JSON.stringify(r.body), false);
+}
+
+/* ================= 知识库 ================= */
+async function loadKbs() {
+  const r = await api("/v1/kb/list", { method: "POST", body: JSON.stringify(tenantBody({ page: 1, page_size: 100 })) });
+  const tbody = document.querySelector("#kbTable tbody");
+  tbody.innerHTML = "";
+  if (r.body && r.body.code === 0) {
+    const q = (document.getElementById("kbSearch")?.value || "").trim().toLowerCase();
+    const kbs = (r.body.data.kbs || []).filter(k => !q || String(k.name || "").toLowerCase().includes(q));
+    if (!kbs.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">暂无知识库</td></tr>';
+    }
+    kbs.forEach(k => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${esc(k.name)}<div class="id-cell" title="${escAttr(k.id)}">${esc(k.id)}</div></td><td>${modeBadge(k.rag_mode)}</td>
+        <td>${esc(k.vlm_id || "-")} / ${k.page_top_n || 3}</td>
+        <td>${k.doc_num}</td><td>${k.chunk_num} / ${k.page_num || 0}</td><td>${k.parser_id}/${k.chunker_id}</td>
+        <td><button class="small" onclick="viewKbDetail('${k.id}')">详情</button>
+            <button class="small secondary" onclick="selectKb('${k.id}')">选择</button>
+            <button class="small secondary" onclick="editKb('${k.id}')">编辑</button>
+            <button class="small secondary" onclick="openKbAcl('${k.id}', '${escAttr(k.name)}')">授权</button>
+            <button class="small secondary" onclick="fillExperimentKb('${k.id}')">检查</button>
+            <button class="small danger" onclick="rmKb('${k.id}')">删除</button></td>`;
+      tbody.appendChild(tr);
+    });
+    if (kbs.length && !state.kbId) state.kbId = kbs[0].id;
+  } else {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--err)">加载失败: ${JSON.stringify(r.body)}</td></tr>`;
+  }
+}
+
+async function saveKb() {
+  const editId = document.getElementById("kbEditId").value.trim();
+  const name = document.getElementById("kbName").value.trim();
+  if (!name) { showMsg(document.getElementById("kbMsg"), "请输入知识库名称", false); return; }
+  const body = {
+    tenant_id: currentTenant(),
+    name,
+    description: document.getElementById("kbDesc").value.trim(),
+    embd_id: document.getElementById("kbEmbd").value,
+    parser_id: document.getElementById("kbParser").value,
+    chunker_id: document.getElementById("kbChunker").value,
+    rag_mode: document.getElementById("kbMode").value,
+    vlm_id: document.getElementById("kbVlm").value.trim() || "qwen-vl-plus",
+    page_top_n: Number(document.getElementById("kbPageTopN").value || 3),
+    permission: "me",
+    chunker_config: { chunk_token_num: 512 },
+  };
+  if (editId) body.kb_id = editId;
+  const r = await api(editId ? "/v1/kb/update" : "/v1/kb/create", { method: "POST", body: JSON.stringify(body) });
+  if (r.body && r.body.code === 0) {
+    showMsg(document.getElementById("kbMsg"), editId ? "知识库保存成功" : "知识库创建成功");
+    resetKbForm();
+    loadKbs();
+  } else {
+    showMsg(document.getElementById("kbMsg"), "保存失败: " + JSON.stringify(r.body), false);
+  }
+}
+
+async function editKb(id) {
+  const r = await api("/v1/kb/detail?" + tenantQuery({ kb_id: id }), { method: "GET" });
+  if (!(r.body && r.body.code === 0)) {
+    toast("读取知识库详情失败: " + JSON.stringify(r.body), false);
+    return;
+  }
+  const k = r.body.data;
+  document.getElementById("kbEditId").value = k.id || "";
+  document.getElementById("kbName").value = k.name || "";
+  document.getElementById("kbDesc").value = k.description || "";
+  document.getElementById("kbEmbd").value = k.embd_id || "bge-m3@VLLM2";
+  document.getElementById("kbMode").value = k.rag_mode || "vision";
+  document.getElementById("kbVlm").value = k.vlm_id || "qwen-vl-plus";
+  document.getElementById("kbPageTopN").value = k.page_top_n || 3;
+  document.getElementById("kbParser").value = k.parser_id || "naive";
+  document.getElementById("kbChunker").value = k.chunker_id || "naive";
+  showMsg(document.getElementById("kbMsg"), "已加载知识库配置，可修改后保存");
+}
+
+function resetKbForm() {
+  document.getElementById("kbEditId").value = "";
+  document.getElementById("kbName").value = "";
+  document.getElementById("kbDesc").value = "";
+  document.getElementById("kbMode").value = "vision";
+  document.getElementById("kbVlm").value = "qwen-vl-plus";
+  document.getElementById("kbPageTopN").value = 3;
+  document.getElementById("kbParser").value = "naive";
+  document.getElementById("kbChunker").value = "naive";
+}
+
+async function openKbAcl(kbId, kbName) {
+  document.getElementById("kbAclCard").style.display = "block";
+  document.getElementById("aclKbId").value = kbId;
+  document.getElementById("kbAclTitle").textContent = `${kbName} / ${kbId}`;
+  await loadKbAcl();
+}
+
+async function loadKbAcl() {
+  const kbId = document.getElementById("aclKbId").value;
+  if (!kbId) return;
+  const r = await api("/v1/kb/acl/list?" + tenantQuery({ kb_id: kbId }), { method: "GET" });
+  const tbody = document.querySelector("#kbAclTable tbody");
+  if (!(r.body && r.body.code === 0)) {
+    tbody.innerHTML = `<tr><td colspan="4" style="color:var(--err)">加载失败: ${esc(JSON.stringify(r.body))}</td></tr>`;
+    return;
+  }
+  const rows = r.body.data || [];
+  tbody.innerHTML = rows.length ? rows.map(a => `<tr>
+    <td>${esc(a.subject_type)}:${esc(a.subject_id)}</td>
+    <td><span class="badge run">${esc(a.permission)}</span></td>
+    <td>${a.status === "1" ? '<span class="badge ok">启用</span>' : '<span class="badge warn">禁用</span>'}</td>
+    <td><button class="small danger" onclick="removeKbAcl('${escAttr(a.id)}')">删除</button></td>
+  </tr>`).join("") : '<tr><td colspan="4" class="hint">暂无授权记录</td></tr>';
+}
+
+async function saveKbAcl() {
+  const body = tenantBody({
+    kb_id: document.getElementById("aclKbId").value,
+    subject_type: document.getElementById("aclSubjectType").value,
+    subject_id: document.getElementById("aclSubjectId").value.trim(),
+    permission: document.getElementById("aclPermission").value,
+    status: "1",
+  });
+  if (!body.kb_id || !body.subject_id) return showMsg(document.getElementById("kbAclMsg"), "请填写授权主体", false);
+  const r = await api("/v1/kb/acl/save", { method: "POST", body: JSON.stringify(body) });
+  if (r.body && r.body.code === 0) {
+    showMsg(document.getElementById("kbAclMsg"), "授权已保存");
+    document.getElementById("aclSubjectId").value = "";
+    loadKbAcl();
+  } else {
+    showMsg(document.getElementById("kbAclMsg"), "保存失败: " + JSON.stringify(r.body), false);
+  }
+}
+
+async function removeKbAcl(id) {
+  if (!confirm("确认删除该授权？")) return;
+  const r = await api("/v1/kb/acl/rm", { method: "POST", body: JSON.stringify(tenantBody({ id })) });
+  if (r.body && r.body.code === 0) loadKbAcl(); else toast("删除失败: " + JSON.stringify(r.body), false);
+}
+
+/* ================= 模型管理 ================= */
+async function loadModels() {
+  const r = await api("/v1/llm/list?" + tenantQuery({ model_type: "", flat: "1" }), { method: "GET" });
+  const tbody = document.querySelector("#modelTable tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  if (!(r.body && r.body.code === 0)) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--err)">加载失败: ${esc(JSON.stringify(r.body))}</td></tr>`;
+    return;
+  }
+  const rows = Array.isArray(r.body.data) ? r.body.data : [];
+  state.models = rows;
+  rows.forEach(m => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${esc(m.llm_name)}</td><td>${esc(m.model_type)}</td><td>${esc(m.fid)}</td>
+      <td>${m.max_tokens || 0}</td><td>${m.status === "1" ? '<span class="badge ok">启用</span>' : '<span class="badge warn">禁用</span>'}</td>
+      <td>
+        <button class="small" onclick="editModelById('${m.id}')">编辑</button>
+        <button class="small secondary" onclick="toggleModel('${m.id}','${m.status === "1" ? "0" : "1"}')">${m.status === "1" ? "禁用" : "启用"}</button>
+        <button class="small secondary" onclick="testModel('${m.id}')">测试</button>
+        <button class="small danger" onclick="removeModel('${m.id}')">删除</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+async function loadFactories() {
+  const r = await api("/v1/llm/factory/list", { method: "GET" });
+  const tbody = document.querySelector("#factoryTable tbody");
+  const list = document.getElementById("factoryOptions");
+  if (tbody) tbody.innerHTML = "";
+  if (list) list.innerHTML = "";
+  if (!(r.body && r.body.code === 0)) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="color:var(--err)">加载失败: ${esc(JSON.stringify(r.body))}</td></tr>`;
+    return;
+  }
+  const rows = Array.isArray(r.body.data) ? r.body.data : [];
+  state.factories = rows;
+  rows.forEach(f => {
+    if (list) {
+      const opt = document.createElement("option");
+      opt.value = f.name || "";
+      list.appendChild(opt);
+    }
+    if (!tbody) return;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${esc(f.name)}</td><td>${esc(f.api_base || "-")}</td><td>${esc(f.api_key_masked || "-")}</td>
+      <td>${f.status === "1" ? '<span class="badge ok">启用</span>' : '<span class="badge warn">禁用</span>'}</td>
+      <td><button class="small" onclick="editFactory('${escAttr(f.name)}')">编辑</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function editFactory(name) {
+  const f = state.factories.find(item => item.name === name);
+  if (!f) return;
+  document.getElementById("factoryName").value = f.name || "";
+  document.getElementById("factoryApiBase").value = f.api_base || "";
+  document.getElementById("factoryApiKey").value = "";
+  document.getElementById("factoryStatus").value = f.status || "1";
+  document.getElementById("modelFid").value = f.name || "";
+  showMsg(document.getElementById("factoryMsg"), "已加载厂商配置，API Key 留空则不更新");
+}
+
+function resetFactoryForm() {
+  document.getElementById("factoryName").value = "";
+  document.getElementById("factoryApiBase").value = "";
+  document.getElementById("factoryApiKey").value = "";
+  document.getElementById("factoryStatus").value = "1";
+}
+
+async function saveFactory() {
+  const body = {
+    name: document.getElementById("factoryName").value.trim(),
+    api_base: document.getElementById("factoryApiBase").value.trim(),
+    api_key: document.getElementById("factoryApiKey").value.trim(),
+    status: document.getElementById("factoryStatus").value,
+  };
+  if (!body.name) {
+    showMsg(document.getElementById("factoryMsg"), "厂商名称不能为空", false);
+    return;
+  }
+  const r = await api("/v1/llm/factory/set", { method: "POST", body: JSON.stringify(body) });
+  if (r.body && r.body.code === 0) {
+    showMsg(document.getElementById("factoryMsg"), "厂商保存成功");
+    document.getElementById("modelFid").value = body.name;
+    resetFactoryForm();
+    loadFactories();
+  } else {
+    showMsg(document.getElementById("factoryMsg"), "保存失败: " + JSON.stringify(r.body), false);
+  }
+  loadKeyRotations();
+}
+
+async function loadKeyRotations() {
+  const tbody = document.querySelector("#keyRotationTable tbody");
+  if (!tbody) return;
+  const r = await api("/v1/llm/factory/rotation/list", { method: "GET" });
+  if (!(r.body && r.body.code === 0)) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--err)">加载失败: ${esc(JSON.stringify(r.body))}</td></tr>`;
+    return;
+  }
+  const rows = r.body.data || [];
+  tbody.innerHTML = rows.length ? rows.map(x => `<tr>
+    <td>${esc(x.create_date || "")}</td><td>${esc(x.factory_name || "")}</td><td>${esc(x.operator || "")}</td>
+    <td>${esc(x.action || "")}</td><td>${esc(x.old_key_masked || "")}</td><td>${esc(x.new_key_masked || "")}</td>
+  </tr>`).join("") : '<tr><td colspan="6" class="hint">暂无轮换记录</td></tr>';
+}
+
+async function loadKbModelOptions() {
+  const [embRes, vlmRes] = await Promise.all([
+    api("/v1/llm/list?" + tenantQuery({ model_type: "embedding", flat: "1" }), { method: "GET" }),
+    api("/v1/llm/list?" + tenantQuery({ model_type: "vlm", flat: "1" }), { method: "GET" }),
+  ]);
+  fillModelSelect("kbEmbd", embRes, "bge-m3@VLLM2");
+  fillModelSelect("kbVlm", vlmRes, "qwen-vl-plus");
+}
+
+function fillModelSelect(id, res, fallback) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  const old = sel.value || fallback;
+  sel.innerHTML = "";
+  const rows = (res.body && res.body.code === 0 && Array.isArray(res.body.data)) ? res.body.data : [];
+  const enabled = rows.filter(m => m.status === "1");
+  if (!enabled.some(m => m.llm_name === fallback)) {
+    const opt = document.createElement("option");
+    opt.value = fallback;
+    opt.textContent = fallback + " (默认)";
+    sel.appendChild(opt);
+  }
+  enabled.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m.llm_name;
+    opt.textContent = `${m.llm_name} (${m.fid})`;
+    sel.appendChild(opt);
+  });
+  sel.value = [...sel.options].some(o => o.value === old) ? old : fallback;
+}
+
+function editModelById(id) {
+  const m = state.models.find(item => item.id === id);
+  if (m) editModel(m);
+}
+
+function editModel(m) {
+  document.getElementById("modelId").value = m.id || "";
+  document.getElementById("modelName").value = m.llm_name || "";
+  document.getElementById("modelType").value = m.model_type || "chat";
+  document.getElementById("modelFid").value = m.fid || "";
+  document.getElementById("modelMaxTokens").value = m.max_tokens || 0;
+  document.getElementById("modelStatus").value = m.status || "1";
+}
+
+function resetModelForm() {
+  document.getElementById("modelId").value = "";
+  document.getElementById("modelName").value = "";
+  document.getElementById("modelType").value = "chat";
+  document.getElementById("modelFid").value = "";
+  document.getElementById("modelMaxTokens").value = 0;
+  document.getElementById("modelStatus").value = "1";
+}
+
+async function saveModel() {
+  const id = document.getElementById("modelId").value.trim();
+  const body = {
+    tenant_id: currentTenant(),
+    llm_name: document.getElementById("modelName").value.trim(),
+    model_type: document.getElementById("modelType").value,
+    fid: document.getElementById("modelFid").value.trim(),
+    max_tokens: Number(document.getElementById("modelMaxTokens").value || 0),
+    status: document.getElementById("modelStatus").value,
+  };
+  if (!body.llm_name || !body.fid) {
+    showMsg(document.getElementById("modelMsg"), "模型名称和厂商不能为空", false);
+    return;
+  }
+  const path = id ? "/v1/llm/update" : "/v1/llm/create";
+  if (id) body.id = id;
+  const r = await api(path, { method: "POST", body: JSON.stringify(body) });
+  if (r.body && r.body.code === 0) {
+    showMsg(document.getElementById("modelMsg"), "模型保存成功");
+    resetModelForm();
+    loadModels();
+    loadKbModelOptions();
+    loadChatModels();
+  } else {
+    showMsg(document.getElementById("modelMsg"), "保存失败: " + JSON.stringify(r.body), false);
+  }
+}
+
+async function toggleModel(id, status) {
+  const r = await api("/v1/llm/set_status", { method: "POST", body: JSON.stringify({ id, status }) });
+  if (r.body && r.body.code === 0) loadModels(); else toast("操作失败: " + JSON.stringify(r.body), false);
+}
+
+async function testModel(id) {
+  const r = await api("/v1/llm/test", { method: "POST", body: JSON.stringify({ id }) });
+  toast(r.body && r.body.code === 0 ? r.body.data.message : "测试失败: " + JSON.stringify(r.body), !!(r.body && r.body.code === 0));
+}
+
+async function removeModel(id) {
+  if (!confirm("确认删除该模型？")) return;
+  const r = await api("/v1/llm/rm", { method: "POST", body: JSON.stringify({ id }) });
+  if (r.body && r.body.code === 0) loadModels(); else toast("删除失败: " + JSON.stringify(r.body), false);
+}
+
+async function rmKb(id) {
+  if (!confirm("确认删除知识库 " + id + " ？")) return;
+  // 后端 KbRmSerializer 字段为 kb_id（单值）
+  const r = await api("/v1/kb/rm", { method: "POST", body: JSON.stringify({ kb_id: id }) });
+  if (r.body && r.body.code === 0) { loadKbs(); } else { toast("删除失败: " + JSON.stringify(r.body), false); }
+}
+
+function selectKb(id) {
+  state.kbId = id;
+  toast("已选择知识库，正在打开文档管理");
+  switchTab("doc");
+}
+
+async function viewKbDetail(id) {
+  state.kbId = id;
+  const [kbRes, docRes, taskRes] = await Promise.all([
+    api("/v1/kb/detail?" + tenantQuery({ kb_id: id }), { method: "GET" }),
+    api("/v1/document/list?" + tenantQuery({ kb_id: id, page: "1", page_size: "500" }), { method: "GET" }),
+    api("/v1/document/task/list?" + tenantQuery({ kb_id: id, page: "1", page_size: "20" }), { method: "GET" }),
+  ]);
+  if (!(kbRes.body && kbRes.body.code === 0)) {
+    toast("读取知识库详情失败: " + JSON.stringify(kbRes.body), false);
+    return;
+  }
+  const kb = kbRes.body.data;
+  const docs = (docRes.body && docRes.body.code === 0) ? (docRes.body.data.docs || []) : [];
+  const tasks = (taskRes.body && taskRes.body.code === 0) ? (taskRes.body.data.tasks || []) : [];
+  const doneDocs = docs.filter(d => d.run === "1").length;
+  const failedDocs = docs.filter(d => d.run === "-1").length;
+  const body = document.getElementById("docDetailBody");
+  body.innerHTML = `
+    <div class="summary-grid">
+      <div class="summary-item"><div class="label">文档</div><div class="value">${docs.length}</div></div>
+      <div class="summary-item"><div class="label">完成 / 失败</div><div class="value" style="font-size:18px">${doneDocs} / ${failedDocs}</div></div>
+      <div class="summary-item"><div class="label">文本切片</div><div class="value">${kb.chunk_num || 0}</div></div>
+      <div class="summary-item"><div class="label">视觉页图</div><div class="value">${kb.page_num || 0}</div></div>
+    </div>
+    <div class="panel">
+      <h4>${esc(kb.name)}</h4>
+      <div class="check-list">
+        <div class="check-row"><span>知识库ID</span><span>${esc(kb.id)}</span></div>
+        <div class="check-row"><span>RAG模式</span><span>${modeBadge(kb.rag_mode)}</span></div>
+        <div class="check-row"><span>Embedding / VLM</span><span>${esc(kb.embd_id || "-")} / ${esc(kb.vlm_id || "-")}</span></div>
+        <div class="check-row"><span>页图TopN</span><span>${kb.page_top_n || 3}</span></div>
+        <div class="check-row"><span>解析器 / 切分器</span><span>${esc(kb.parser_id || "-")} / ${esc(kb.chunker_id || "-")}</span></div>
+      </div>
+      <div class="detail-actions">
+        <button class="small" onclick="selectKb('${kb.id}')">设为当前知识库</button>
+        <button class="small secondary" onclick="switchDocKb('${kb.id}')">查看文档</button>
+        <button class="small secondary" onclick="switchTaskKb('${kb.id}')">查看任务</button>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:12px">
+      <h4>最近任务</h4>
+      ${tasks.length ? tasks.map(t => `<div class="check-row"><span>${esc(t.doc_name || t.doc_id)}</span><span>${Math.round(Number(t.progress || 0) * 100)}% · ${esc(lastLine(t.progress_msg || ""))}</span></div>`).join("") : '<div class="hint">暂无任务</div>'}
+    </div>
+  `;
+  document.getElementById("docDetailMask").classList.add("show");
+}
+
+function switchDocKb(id) {
+  closeDocDetail();
+  switchTabByName("doc");
+  setTimeout(() => {
+    const sel = document.getElementById("docKb");
+    if (sel) sel.value = id;
+    refreshDocs();
+  }, 200);
+}
+
+function switchTaskKb(id) {
+  closeDocDetail();
+  switchTabByName("task");
+  setTimeout(() => {
+    const sel = document.getElementById("taskKb");
+    if (sel) sel.value = id;
+    loadTasks();
+  }, 200);
+}
+
+/* ================= 文档 ================= */
+async function loadKbSelect() {
+  const r = await api("/v1/kb/list", { method: "POST", body: JSON.stringify(tenantBody({ page: 1, page_size: 100 })) });
+  const sel = document.getElementById("docKb");
+  sel.innerHTML = "";
+  if (r.body && r.body.code === 0) {
+    (r.body.data.kbs || []).forEach(k => {
+      const opt = document.createElement("option");
+      opt.value = k.id; opt.textContent = `${k.name} (${k.id})`;
+      sel.appendChild(opt);
+    });
+    if (state.kbId) sel.value = state.kbId;
+  }
+  refreshDocs();
+}
+
+async function uploadDocs() {
+  const kbId = document.getElementById("docKb").value;
+  const files = document.getElementById("docFile").files;
+  if (!kbId) { showMsg(document.getElementById("docMsg"), "请先选择知识库", false); return; }
+  if (!files.length) { showMsg(document.getElementById("docMsg"), "请选择文件", false); return; }
+  const fd = new FormData();
+  fd.append("kb_id", kbId);
+  fd.append("tenant_id", currentTenant());
+  for (const f of files) fd.append("file", f);
+  const r = await api("/v1/document/upload", { method: "POST", body: fd });
+  if (r.body && r.body.code === 0) {
+    showMsg(document.getElementById("docMsg"), `上传成功 ${r.body.data.length} 个文件`);
+    refreshDocs();
+  } else {
+    showMsg(document.getElementById("docMsg"), "上传失败: " + JSON.stringify(r.body), false);
+  }
+}
+
+async function refreshDocs() {
+  const kbId = document.getElementById("docKb").value;
+  if (!kbId) return;
+  state.kbId = kbId;
+  const params = tenantQuery({ kb_id: kbId, page: "1", page_size: "100" });
+  const r = await api("/v1/document/list?" + params.toString(), { method: "GET" });
+  if (r.body && r.body.code === 0) {
+    state.docs = r.body.data.docs || r.body.data.documents || [];
+    renderDocs();
+    syncDocPoll();
+  } else {
+    document.querySelector("#docTable tbody").innerHTML = `<tr><td colspan="7" style="color:var(--err)">加载失败: ${JSON.stringify(r.body)}</td></tr>`;
+  }
+}
+
+function renderDocs() {
+  const tbody = document.querySelector("#docTable tbody");
+  tbody.innerHTML = "";
+  const q = (document.getElementById("docSearch")?.value || "").trim().toLowerCase();
+  const runF = document.getElementById("docRunFilter")?.value || "";
+  const typeF = (document.getElementById("docTypeFilter")?.value || "").toLowerCase();
+  const extraF = document.getElementById("docExtraFilter")?.value || "";
+  const docs = (state.docs || []).filter(d => {
+    const nameOk = !q || String(d.name || "").toLowerCase().includes(q);
+    const runOk = !runF || String(d.run) === runF;
+    const typeOk = !typeF || String(d.type || "").toLowerCase() === typeF || String(d.name || "").toLowerCase().endsWith("." + typeF);
+    const extraOk = !extraF
+      || (extraF === "stale" && isStaleDoc(d))
+      || (extraF === "disabled" && String(d.status) !== "1")
+      || (extraF === "vision" && Number(d.page_num || 0) > 0)
+      || (extraF === "text" && Number(d.chunk_num || 0) > 0);
+    return nameOk && runOk && typeOk && extraOk;
+  });
+  if (!docs.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">当前筛选下没有文档</td></tr>';
+    return;
+  }
+  docs.forEach(d => {
+    const status = d.status === "1" ? `<span class="badge ok">启用</span>` : `<span class="badge warn">停用</span>`;
+    const stale = isStaleDoc(d) ? ' <span class="badge warn">进度异常</span>' : "";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${docThumb(d)}</td>
+      <td><div class="name-cell"><button class="doc-name" onclick="viewDocDetail('${d.id}')">${esc(d.name)}</button><span class="id-cell">${esc(d.type || "")} · ${fmtSize(d.size)}</span></div></td>
+      <td><div class="status-stack">${status} ${runBadge(d.run)}${stale}</div></td>
+      <td>${d.chunk_num || 0} / ${d.page_num || 0}</td>
+      <td>${indexBadges(d)}</td>
+      <td>${progressBar(d.progress, d.run)}</td>
+      <td>
+        <div class="ops">
+        <button class="small secondary" onclick="viewDocDetail('${d.id}')">详情</button>
+        <button class="small" onclick="runDoc('${d.id}')">解析</button>
+        <button class="small danger" onclick="rmDoc('${d.id}')">删除</button>
+        <details class="more-menu">
+          <summary>更多</summary>
+          <div class="more-list">
+            <button class="small secondary" onclick="toggleDocStatus('${d.id}','${d.status === "1" ? "0" : "1"}')">${d.status === "1" ? "禁用" : "启用"}</button>
+            <button class="small" onclick="viewChunks('${d.id}')">切片</button>
+            <button class="small secondary" onclick="downloadDoc('${d.id}','${escAttr(d.name)}')">下载</button>
+          </div>
+        </details>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+let docPollTimer = null;
+function syncDocPoll() {
+  if (docPollTimer) { clearInterval(docPollTimer); docPollTimer = null; }
+  const running = (state.docs || []).some(d => String(d.run) === "2");
+  if (running) docPollTimer = setInterval(() => {
+    if (document.getElementById("tab-doc")?.classList.contains("active")) refreshDocs();
+  }, 4000);
+}
+
+async function runDoc(id) {
+  const r = await api("/v1/document/run", { method: "POST", body: JSON.stringify({ doc_ids: [id], run: "2", delete: false }) });
+  toast(r.body && r.body.code === 0 ? "已触发解析任务" : "触发失败: " + JSON.stringify(r.body), !!(r.body && r.body.code === 0));
+  setTimeout(refreshDocs, 1200);
+}
+
+async function toggleDocStatus(id, status) {
+  const r = await api("/v1/document/change_status", {
+    method: "POST",
+    body: JSON.stringify({ doc_id: id, status }),
+  });
+  if (r.body && r.body.code === 0) refreshDocs(); else toast("状态修改失败: " + JSON.stringify(r.body), false);
+}
+
+async function viewDocDetail(id) {
+  const d = state.docs.find(item => item.id === id);
+  if (!d) return;
+  const versionRes = await api("/v1/document/version/list?" + tenantQuery({ doc_id: id }), { method: "GET" });
+  const versions = (versionRes.body && versionRes.body.code === 0) ? (versionRes.body.data || []) : [];
+  const title = document.getElementById("docDetailTitle");
+  if (title) title.textContent = d.name || "文档详情";
+  const preview = isImageDoc(d)
+    ? `<div class="preview-frame"><img onclick="previewImage('${API}/v1/document/image/${d.id}','${escAttr(d.name)}')" src="${API}/v1/document/image/${d.id}" style="max-width:100%;max-height:280px;object-fit:contain;cursor:pointer"></div>`
+    : "";
+  const body = document.getElementById("docDetailBody");
+  body.innerHTML = `
+    ${preview}
+    <div class="summary-grid">
+      <div class="summary-item"><div class="label">状态</div><div class="value" style="font-size:14px">${d.status === "1" ? "启用" : "禁用"}</div></div>
+      <div class="summary-item"><div class="label">解析</div><div class="value" style="font-size:14px">${runText(d.run)}</div></div>
+      <div class="summary-item"><div class="label">文本切片</div><div class="value">${d.chunk_num || 0}</div></div>
+      <div class="summary-item"><div class="label">视觉页图</div><div class="value">${d.page_num || 0}</div></div>
+    </div>
+    ${progressBar(d.progress, d.run)}
+    <div class="panel">
+      <h4>${esc(d.name)}</h4>
+      <div class="check-list">
+        <div class="check-row"><span>文档ID</span><span class="id-cell">${esc(d.id)}</span></div>
+        <div class="check-row"><span>类型 / 大小</span><span>${esc(d.type || "-")} / ${fmtSize(d.size)}</span></div>
+        <div class="check-row"><span>解析器 / 切分器</span><span>${esc(d.parser_id || "-")} / ${esc(d.chunker_id || "-")}</span></div>
+        <div class="check-row"><span>索引模式</span><span>${indexBadges(d)}</span></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:12px">
+      <h4>版本记录</h4>
+      ${versions.length ? versions.map(v => `<div class="check-row"><span>v${v.version} · ${esc(v.file_name)}</span><span>${fmtSize(v.file_size)} · ${v.is_current === "1" ? "当前" : "历史"} · ${esc(v.create_date || "")}</span></div>`).join("") : '<div class="hint">暂无版本记录</div>'}
+    </div>
+    <div class="panel" style="margin-top:12px">
+      <h4>处理日志</h4>
+      <pre style="white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.6;color:var(--muted)">${esc(d.progress_msg || "暂无日志")}</pre>
+    </div>
+    <div class="detail-actions">
+      <button class="small" onclick="downloadDoc('${d.id}','${escAttr(d.name)}')">下载原文件</button>
+      <button class="small" onclick="viewChunks('${d.id}')">查看切片</button>
+      <button class="small" onclick="runDoc('${d.id}')">重新解析</button>
+    </div>
+  `;
+  document.getElementById("docDetailMask").classList.add("show");
+}
+
+function closeDocDetail() {
+  document.getElementById("docDetailMask").classList.remove("show");
+}
+
+async function runAllDocs() {
+  const kbId = document.getElementById("docKb").value;
+  if (!kbId) return;
+  const params = tenantQuery({ kb_id: kbId, page: "1", page_size: "500" });
+  const r = await api("/v1/document/list?" + params.toString(), { method: "GET" });
+  if (!(r.body && r.body.code === 0)) {
+    toast("读取文档列表失败: " + JSON.stringify(r.body), false);
+    return;
+  }
+  const docs = r.body.data.docs || [];
+  if (!docs.length) {
+    toast("当前知识库没有文档", false);
+    return;
+  }
+  const ids = docs.map(d => d.id);
+  const rr = await api("/v1/document/run", { method: "POST", body: JSON.stringify({ doc_ids: ids, run: "2", delete: false }) });
+  toast(rr.body && rr.body.code === 0 ? `已触发 ${ids.length} 个文档解析任务` : "触发失败: " + JSON.stringify(rr.body), !!(rr.body && rr.body.code === 0));
+  setTimeout(refreshDocs, 3000);
+}
+
+async function rmDoc(id) {
+  if (!confirm("确认删除该文档？")) return;
+  // 后端 DocRmSerializer 字段为 doc_id（字符串或字符串列表）
+  const r = await api("/v1/document/rm", { method: "POST", body: JSON.stringify({ doc_id: id }) });
+  if (r.body && r.body.code === 0) refreshDocs(); else toast("删除失败: " + JSON.stringify(r.body), false);
+}
+
+function downloadDoc(id, name) {
+  const a = document.createElement("a");
+  a.href = `${API}/v1/document/get/${id}`;
+  a.download = name || id;
+  a.target = "_blank";
+  a.click();
+  toast("开始下载 " + (name || id));
+}
+
+/* ================= 切片查看（真功能） ================= */
+let chunkState = { docId: "", page: 1, size: 20, total: 0, pages: 1 };
+
+function viewChunks(id) {
+  chunkState = { docId: id, page: 1, size: 20, total: 0, pages: 1 };
+  document.getElementById("chunkMask").classList.add("show");
+  loadChunks();
+}
+
+async function loadChunks() {
+  const bodyEl = document.getElementById("chunkBody");
+  bodyEl.innerHTML = '<div class="loading">加载中...</div>';
+  // 后端 chunk/list：POST { doc_id, page, size } → { code, data: { total, chunks, doc } }
+  const r = await api("/v1/chunk/list", { method: "POST", body: JSON.stringify({ doc_id: chunkState.docId, page: chunkState.page, size: chunkState.size }) });
+  if (!(r.body && r.body.code === 0)) {
+    bodyEl.innerHTML = '<div style="color:var(--err)">加载失败: ' + esc(JSON.stringify(r.body)) + '</div>';
+    return;
+  }
+  const data = r.body.data || {};
+  chunkState.total = data.total || 0;
+  chunkState.pages = Math.max(1, Math.ceil(chunkState.total / chunkState.size));
+  if (data.doc && data.doc.name) document.getElementById("chunkDocName").textContent = "《" + data.doc.name + "》";
+
+  const chunks = data.chunks || [];
+  if (!chunks.length) {
+    bodyEl.innerHTML = '<div class="hint">该文档暂无切片</div>';
+  } else {
+    bodyEl.innerHTML = chunks.map(c => {
+      const cid = esc(c.chunk_id || c.id || "");
+      const content = esc(c.content_with_weight || c.content || "");
+      const kw = [].concat(c.important_kwd || [], c.question_kwd || [], c.tag_kwd || [])
+        .filter(Boolean).map(k => `<span>${esc(k)}</span>`).join("");
+      const avail = c.available_int === 0
+        ? '<span class="badge warn">停用</span>'
+        : '<span class="badge ok">启用</span>';
+      return `<div class="chunk-item">
+        <div class="chunk-meta">${avail}<span>${cid}</span></div>
+        <div class="chunk-content">${content}</div>
+        ${kw ? `<div class="chunk-kw">${kw}</div>` : ""}
+      </div>`;
+    }).join("");
+  }
+  document.getElementById("chunkPageInfo").textContent =
+    `第 ${chunkState.page} / ${chunkState.pages} 页 · 共 ${chunkState.total} 条`;
+}
+
+function chunkPage(delta) {
+  const np = chunkState.page + delta;
+  if (np < 1 || np > chunkState.pages) return;
+  chunkState.page = np;
+  loadChunks();
+}
+
+function closeChunkMask() {
+  document.getElementById("chunkMask").classList.remove("show");
+}
+
+/* ================= 对话 ================= */
+async function loadAssistants() {
+  const r = await api("/v1/assistant/list", { method: "GET" });
+  const sel = document.getElementById("chatAssistant");
+  sel.innerHTML = "";
+  if (r.body && r.body.code === 0) {
+    state.assistants = r.body.data.assistants || [];
+    state.assistants.forEach(a => {
+      const opt = document.createElement("option");
+      opt.value = a.assistant_key;
+      opt.textContent = a.assistant_name || a.assistant_key;
+      sel.appendChild(opt);
+    });
+    state.assistantKey = sel.value || "chat";
+  }
+  sel.onchange = () => { state.assistantKey = sel.value; };
+}
+
+async function loadChatKbSelect() {
+  const r = await api("/v1/kb/list", { method: "POST", body: JSON.stringify(tenantBody({ page: 1, page_size: 100 })) });
+  const sel = document.getElementById("chatKb");
+  if (!sel) return;
+  sel.innerHTML = "";
+  if (r.body && r.body.code === 0) {
+    (r.body.data.kbs || []).forEach(k => {
+      const opt = document.createElement("option");
+      opt.value = k.id;
+      opt.textContent = `${k.name} [${modeText(k.rag_mode)}]`;
+      sel.appendChild(opt);
+    });
+    if (state.kbId) sel.value = state.kbId;
+  }
+  sel.onchange = () => { state.kbId = sel.value; };
+}
+
+async function loadChatModels() {
+  const r = await api("/v1/llm/list?" + tenantQuery({ model_type: "chat", flat: "1" }), { method: "GET" });
+  const sel = document.getElementById("chatModel");
+  if (!sel) return;
+  sel.innerHTML = "";
+  if (r.body && r.body.code === 0) {
+    (r.body.data || []).filter(m => m.status === "1").forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m.llm_name;
+      opt.textContent = `${m.llm_name} (${m.fid})`;
+      sel.appendChild(opt);
+    });
+  }
+}
+
+async function loadConversations() {
+  const user = document.getElementById("chatUserId")?.value.trim() || "admin";
+  const r = await api("/v1/conversation/list?" + tenantQuery({ user_id: user }), { method: "GET" });
+  const box = document.getElementById("conversationList");
+  if (!box) return;
+  box.innerHTML = "";
+  if (!(r.body && r.body.code === 0)) {
+    box.innerHTML = `<div class="conv-item"><div class="meta">加载失败：${esc(JSON.stringify(r.body))}</div></div>`;
+    return;
+  }
+  state.conversations = r.body.data || [];
+  renderConversations();
+}
+
+function renderConversations() {
+  const box = document.getElementById("conversationList");
+  if (!box) return;
+  const q = (document.getElementById("convSearch")?.value || "").trim().toLowerCase();
+  const rows = (state.conversations || []).filter(c => {
+    if (!q) return true;
+    const last = Array.isArray(c.message) ? (c.message.filter(m => m.content).pop()?.content || "") : "";
+    const hay = `${c.name || ""} ${c.id || ""} ${c.model || ""} ${last}`.toLowerCase();
+    return hay.includes(q);
+  });
+  if (!rows.length) {
+    box.innerHTML = '<div class="conv-item"><div class="meta">暂无匹配会话</div></div>';
+    return;
+  }
+  box.innerHTML = "";
+  rows.forEach(c => {
+    const last = Array.isArray(c.message) ? (c.message.filter(m => m.content).pop()?.content || "") : "";
+    const div = document.createElement("div");
+    div.className = "conv-item" + (c.id === state.conversationId ? " active" : "");
+    div.onclick = () => openConversation(c.id);
+    div.innerHTML = `<div class="name">${esc(c.name || c.id)}</div><div class="meta">${esc(c.model || "-")} · ${esc(c.update_date || "")}</div>${last ? `<div class="meta">${esc(String(last).slice(0, 48))}</div>` : ""}`;
+    box.appendChild(div);
+  });
+}
+
+function newConversation() {
+  state.conversationId = "conv_" + Date.now();
+  document.getElementById("chatConv").value = state.conversationId;
+  clearChat();
+  loadConversations();
+}
+
+async function openConversation(id) {
+  const user = document.getElementById("chatUserId")?.value.trim() || "admin";
+  const r = await api("/v1/conversation/get?" + tenantQuery({ conversation_id: id, user_id: user }), { method: "GET" });
+  if (!(r.body && r.body.code === 0)) {
+    toast("打开会话失败: " + JSON.stringify(r.body), false);
+    return;
+  }
+  const conv = r.body.data;
+  state.conversationId = conv.id;
+  document.getElementById("chatConv").value = conv.id;
+  clearChat();
+  const refs = Array.isArray(conv.reference) ? conv.reference : [];
+  let aiIndex = 0;
+  if ((conv.message || []).length) document.getElementById("chatBox").innerHTML = "";
+  (conv.message || []).forEach(msg => {
+    const el = appendMsg(msg.role === "assistant" ? "ai" : "user", msg.role === "assistant" ? renderAnswer(msg.content || "") : esc(msg.content || ""));
+    if (msg.role === "assistant") {
+      renderReferences(el, refs[aiIndex] || {});
+      addFeedbackActions(el, conv.id, msg.id || "");
+      aiIndex += 1;
+    }
+  });
+  loadConversations();
+}
+
+async function renameConversation() {
+  const id = document.getElementById("chatConv").value.trim() || state.conversationId;
+  if (!id) return toast("请先选择会话", false);
+  const name = prompt("请输入新的会话名称", "");
+  if (!name) return;
+  const r = await api("/v1/conversation/set", {
+    method: "POST",
+    body: JSON.stringify({
+      tenant_id: currentTenant(),
+      conversation_id: id,
+      name,
+      user_id: document.getElementById("chatUserId").value.trim() || "admin",
+    }),
+  });
+  if (r.body && r.body.code === 0) { loadConversations(); toast("已重命名"); } else toast("重命名失败: " + JSON.stringify(r.body), false);
+}
+
+async function exportConversation() {
+  const id = document.getElementById("chatConv").value.trim() || state.conversationId;
+  if (!id) return toast("请先选择会话", false);
+  const user = document.getElementById("chatUserId").value.trim() || "admin";
+  const r = await api("/v1/conversation/export?" + tenantQuery({ conversation_id: id, user_id: user, export_format: "markdown" }), { method: "GET" });
+  if (!(r.body && r.body.code === 0)) return toast("导出失败: " + JSON.stringify(r.body), false);
+  const content = (r.body.data && r.body.data.content) || "";
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${id}.md`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast("已导出会话 Markdown");
+}
+
+async function removeConversation() {
+  const id = document.getElementById("chatConv").value.trim() || state.conversationId;
+  if (!id) return toast("请先选择会话", false);
+  if (!confirm("确认删除当前会话？")) return;
+  const r = await api("/v1/conversation/rm", {
+    method: "POST",
+    body: JSON.stringify({
+      tenant_id: currentTenant(),
+      conversation_ids: [id],
+      user_id: document.getElementById("chatUserId").value.trim() || "admin",
+    }),
+  });
+  if (r.body && r.body.code === 0) {
+    state.conversationId = "";
+    document.getElementById("chatConv").value = "";
+    clearChat();
+    loadConversations();
+  } else {
+    toast("删除失败: " + JSON.stringify(r.body), false);
+  }
+}
+
+async function sendChat() {
+  const input = document.getElementById("chatInput");
+  const q = input.value.trim();
+  if (!q) return;
+  const kbId = document.getElementById("chatKb").value || state.kbId;
+  if (!kbId) {
+    toast("请先选择问答知识库", false);
+    return;
+  }
+  input.value = "";
+  const conv = document.getElementById("chatConv").value.trim() || "conv_" + Date.now();
+  document.getElementById("chatConv").value = conv;
+  state.conversationId = conv;
+  const sendBtn = document.getElementById("chatSendBtn");
+  if (sendBtn) sendBtn.disabled = true;
+
+  appendMsg("user", esc(q));
+  const aiEl = appendMsg("ai", '<span class="loading">思考中...</span>');
+
+  const body = {
+    tenant_id: currentTenant(),
+    conversation_id: conv,
+    messages: [{ role: "user", content: q }],
+    user_id: document.getElementById("chatUserId").value.trim() || "admin",
+    kb_ids: [kbId],
+    model: document.getElementById("chatModel").value || "",
+    assistant_key: document.getElementById("chatAssistant").value || state.assistantKey || "chat",
+  };
+
+  try {
+    const res = await fetch(API + "/v1/conversation/completion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Tenant-Id": currentTenant(), "X-User-Id": body.user_id || "admin" },
+      body: JSON.stringify(body),
+    });
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let acc = "", answer = "";
+    let messageId = "";
+    let latestReference = {};
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      acc += decoder.decode(value, { stream: true });
+      // 解析 SSE 行
+      const lines = acc.split("\n");
+      acc = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        try {
+          const d = JSON.parse(line.slice(5).trim());
+          if (d.data && d.data.id) messageId = d.data.id;
+          if (d.data && d.data.reference) latestReference = d.data.reference;
+          if (d.data && d.data.answer) {
+            answer = d.data.answer;
+            aiEl.querySelector(".text").innerHTML = renderAnswer(answer);
+          }
+          const imgs = (d.data && d.data.images) || [];
+          if (imgs.length) {
+            latestReference = { ...(latestReference || {}), pages: imgs.map(u => ({ url: u })) };
+          } else if (d.data && d.data.reference && d.data.reference.pages) {
+            latestReference = d.data.reference;
+          }
+        } catch (e) { /* 忽略非 JSON 行 */ }
+      }
+    }
+    renderReferences(aiEl, latestReference);
+    if (answer) addFeedbackActions(aiEl, conv, messageId);
+    if (!answer) aiEl.querySelector(".text").innerHTML = '<span style="color:var(--err)">无响应</span>';
+    loadConversations();
+  } catch (e) {
+    aiEl.querySelector(".text").innerHTML = '<span style="color:var(--err)">请求失败: ' + esc(e.message) + "</span>";
+  } finally {
+    const sendBtn = document.getElementById("chatSendBtn");
+    if (sendBtn) sendBtn.disabled = false;
+  }
+}
+
+function addFeedbackActions(aiEl, conversationId, messageId) {
+  if (!messageId) return;
+  const ref = aiEl.querySelector(".ref");
+  const old = ref.querySelector(".feedback-actions");
+  if (old) old.remove();
+  const div = document.createElement("div");
+  div.className = "feedback-actions";
+  div.style.marginTop = "8px";
+  div.innerHTML = `
+    <button class="small secondary" onclick="submitFeedback('${conversationId}','${messageId}','useful')">有用</button>
+    <button class="small danger" onclick="submitFeedback('${conversationId}','${messageId}','useless')">无用</button>
+  `;
+  ref.appendChild(div);
+}
+
+function renderReferences(aiEl, reference) {
+  const ref = aiEl.querySelector(".ref");
+  if (!ref) return;
+  const chunks = Array.isArray(reference?.chunks) ? reference.chunks : [];
+  const pages = Array.isArray(reference?.pages) ? reference.pages : [];
+  const textRefs = chunks.slice(0, 5).map((c, i) => {
+    const name = c.document_name || c.doc_name || c.docnm_kwd || c.document_id || `文本依据 ${i + 1}`;
+    const score = c.similarity || c.vector_similarity || c.term_similarity || c._score || "";
+    const content = c.content || c.content_with_weight || c.text || "";
+    return `<div class="ref-block">
+      <div class="ref-title">${esc(name)} ${score ? "· 相似度 " + esc(fmtScore(score)) : ""}</div>
+      <div class="ref-text">${esc(content)}</div>
+    </div>`;
+  }).join("");
+  const pageRefs = pages.slice(0, 8).map((p, i) => {
+    const url = pageSrc(p);
+    if (!url) return "";
+    const name = p.doc_name || p.document_name || `页图依据 ${i + 1}`;
+    const pageNo = p.page_no || p.page || "";
+    return `<div class="ref-block">
+      <div class="ref-title">${esc(name)}${pageNo ? " · 第 " + esc(pageNo) + " 页" : ""}</div>
+      <img onclick="previewImage('${url}','${escAttr(name)}')" src="${url}" style="max-width:180px;max-height:220px;object-fit:contain;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:#f8fafc">
+    </div>`;
+  }).join("");
+  if (!textRefs && !pageRefs) return;
+  ref.innerHTML = `
+    <div class="ref-tabs">
+      ${textRefs ? '<span class="badge ok">文本依据</span>' : ""}
+      ${pageRefs ? '<span class="badge run">页图依据</span>' : ""}
+    </div>
+    ${textRefs}
+    ${pageRefs}
+  `;
+}
+
+function previewImage(url, title) {
+  document.getElementById("imgPreviewTitle").textContent = title || "页图预览";
+  document.getElementById("imgPreviewBody").innerHTML = `<img src="${url}" style="max-width:100%;max-height:76vh;object-fit:contain;border-radius:8px">`;
+  document.getElementById("imgPreviewMask").classList.add("show");
+}
+function closeImagePreview() {
+  document.getElementById("imgPreviewMask").classList.remove("show");
+}
+
+async function submitFeedback(conversationId, messageId, rating) {
+  let reason = "";
+  let comment = "";
+  if (rating === "useless") {
+    reason = prompt("请选择或填写原因：答案错误 / 引用不相关 / 没有依据 / 回答不完整 / 图表理解错误", "答案错误") || "";
+    comment = prompt("补充说明（可选）", "") || "";
+  }
+  const r = await api("/v1/conversation/feedback", {
+    method: "POST",
+    body: JSON.stringify({
+      tenant_id: currentTenant(),
+      conversation_id: conversationId,
+      message_id: messageId,
+      user_id: document.getElementById("chatUserId").value.trim() || "admin",
+      rating,
+      reason,
+      comment,
+    }),
+  });
+  toast(r.body && r.body.code === 0 ? "反馈已保存" : "反馈失败: " + JSON.stringify(r.body), !!(r.body && r.body.code === 0));
+}
+
+function renderAnswer(html) {
+  const s = String(html || "");
+  if (/<[a-z][\s\S]*>/i.test(s)) return s;
+  return esc(s)
+    .replace(/^#{1,3}\s+(.*)$/gm, "<strong>$1</strong>")
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n/g, "<br>");
+}
+
+function appendMsg(role, html) {
+  const box = document.getElementById("chatBox");
+  const empty = box.querySelector(".empty");
+  if (empty) empty.remove();
+  const div = document.createElement("div");
+  div.className = "msg-item " + role;
+  const who = role === "user" ? "我" : "AI";
+  div.innerHTML = `<div class="who">${who}</div><div class="text">${html}</div><div class="ref"></div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return div;
+}
+
+function clearChat() {
+  document.getElementById("chatBox").innerHTML = '<div class="empty">选择知识库后输入问题，回答会展示文本依据和页图引用。</div>';
+}
+
+/* ================= 反馈评价 ================= */
+async function loadFeedbacks() {
+  const params = tenantQuery();
+  const conv = document.getElementById("feedbackConv")?.value.trim();
+  const user = document.getElementById("feedbackUser")?.value.trim();
+  if (conv) params.set("conversation_id", conv);
+  if (user) params.set("user_id", user);
+  const r = await api("/v1/conversation/feedback/list" + (params.toString() ? "?" + params.toString() : ""), { method: "GET" });
+  const tbody = document.querySelector("#feedbackTable tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  if (!(r.body && r.body.code === 0)) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--err)">加载失败: ${esc(JSON.stringify(r.body))}</td></tr>`;
+    return;
+  }
+  const rows = r.body.data || [];
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="hint">暂无反馈数据</td></tr>';
+    return;
+  }
+  rows.forEach(f => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${esc(f.conversation_id)}</td><td>${esc(f.message_id)}</td><td>${esc(f.user_id || "")}</td>
+      <td>${f.rating === "useful" ? '<span class="badge ok">有用</span>' : '<span class="badge err">无用</span>'}</td>
+      <td>${esc(f.reason || "")}</td><td>${esc(f.comment || "")}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ================= 任务中心 ================= */
+async function loadTaskKbSelect() {
+  const r = await api("/v1/kb/list", { method: "POST", body: JSON.stringify(tenantBody({ page: 1, page_size: 100 })) });
+  const sel = document.getElementById("taskKb");
+  if (!sel) return;
+  sel.innerHTML = '<option value="">全部知识库</option>';
+  if (r.body && r.body.code === 0) {
+    (r.body.data.kbs || []).forEach(k => {
+      const opt = document.createElement("option");
+      opt.value = k.id;
+      opt.textContent = `${k.name} [${modeText(k.rag_mode)}]`;
+      sel.appendChild(opt);
+    });
+    if (state.kbId) sel.value = state.kbId;
+  }
+}
+
+async function loadTasks() {
+  const params = tenantQuery({ page: "1", page_size: "100" });
+  const kbId = document.getElementById("taskKb")?.value || "";
+  const docId = document.getElementById("taskDocId")?.value.trim() || "";
+  if (kbId) params.set("kb_id", kbId);
+  if (docId) params.set("doc_id", docId);
+  const r = await api("/v1/document/task/list?" + params.toString(), { method: "GET" });
+  const tbody = document.querySelector("#taskTable tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  if (!(r.body && r.body.code === 0)) {
+    tbody.innerHTML = `<tr><td colspan="9" style="color:var(--err)">加载失败: ${esc(JSON.stringify(r.body))}</td></tr>`;
+    return;
+  }
+  const rows = r.body.data.tasks || [];
+  const statusF = document.getElementById("taskStatus")?.value || "";
+  const filtered = rows.filter(t => {
+    const progress = Number(t.progress || 0);
+    const failed = /失败|error/i.test(t.progress_msg || "") || progress < 0;
+    if (statusF === "done") return progress >= 1;
+    if (statusF === "running") return progress > 0 && progress < 1 && !failed;
+    if (statusF === "fail") return failed;
+    return true;
+  });
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty">暂无任务</td></tr>';
+    return;
+  }
+  filtered.forEach(t => {
+    const progress = Number(t.progress || 0);
+    const failed = /失败|error/i.test(t.progress_msg || "") || progress < 0;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="id-cell">${esc(t.id)}</td><td>${esc(t.doc_name || t.doc_id)}</td><td>${esc(t.task_type || "parse")}</td>
+      <td>${progressBar(progress, failed ? "-1" : (progress >= 1 ? "1" : "2"))}</td>
+      <td>${Number(t.process_duration || 0).toFixed(1)}s</td><td>${t.retry_count || 0}</td>
+      <td style="max-width:320px">${esc(lastLine(t.progress_msg || ""))}</td><td>${esc(t.update_date || "")}</td>
+      <td><button class="small" onclick="retryTaskDoc('${escAttr(t.doc_id)}')">重试</button> <button class="small secondary" onclick="cancelTaskDoc('${escAttr(t.doc_id)}')">取消</button></td>`;
+    tbody.appendChild(tr);
+  });
+  syncTaskPoll(rows.some(t => Number(t.progress || 0) > 0 && Number(t.progress) < 1));
+}
+
+let taskPollTimer = null;
+function syncTaskPoll(force) {
+  if (taskPollTimer) { clearInterval(taskPollTimer); taskPollTimer = null; }
+  const enabled = document.getElementById("taskAuto")?.checked;
+  if (!enabled && !force) return;
+  if (enabled) taskPollTimer = setInterval(() => {
+    if (document.getElementById("tab-task")?.classList.contains("active")) loadTasks();
+  }, 4000);
+}
+
+async function retryTaskDoc(docId) {
+  const r = await api("/v1/document/run", { method: "POST", body: JSON.stringify(tenantBody({ doc_ids: [docId], run: "2", delete: true })) });
+  toast(r.body && r.body.code === 0 ? "已触发重试" : "重试失败: " + JSON.stringify(r.body), !!(r.body && r.body.code === 0));
+  setTimeout(loadTasks, 1000);
+}
+
+async function cancelTaskDoc(docId) {
+  const r = await api("/v1/document/run", { method: "POST", body: JSON.stringify(tenantBody({ doc_ids: [docId], run: "3", delete: false })) });
+  toast(r.body && r.body.code === 0 ? "已提交取消" : "取消失败: " + JSON.stringify(r.body), !!(r.body && r.body.code === 0));
+  setTimeout(loadTasks, 1000);
+}
+
+/* ================= 检索调试 ================= */
+async function loadDebugKbSelect() {
+  const r = await api("/v1/kb/list", { method: "POST", body: JSON.stringify(tenantBody({ page: 1, page_size: 100 })) });
+  const sel = document.getElementById("debugKb");
+  if (!sel) return;
+  sel.innerHTML = "";
+  if (r.body && r.body.code === 0) {
+    (r.body.data.kbs || []).forEach(k => {
+      const opt = document.createElement("option");
+      opt.value = k.id;
+      opt.textContent = `${k.name} [${modeText(k.rag_mode)}]`;
+      sel.appendChild(opt);
+    });
+    if (state.kbId) sel.value = state.kbId;
+  }
+}
+
+async function runRetrievalDebug() {
+  const kbId = document.getElementById("debugKb")?.value || "";
+  const question = document.getElementById("debugQuestion")?.value.trim() || "";
+  if (!kbId || !question) return showMsg(document.getElementById("debugMsg"), "请选择知识库并输入问题", false);
+  document.getElementById("debugChunks").innerHTML = '<span class="loading">检索中...</span>';
+  document.getElementById("debugPages").innerHTML = "";
+  document.getElementById("debugContext").textContent = "检索中...";
+  const r = await api("/v1/retrieval/debug", {
+    method: "POST",
+    body: JSON.stringify(tenantBody({
+      kb_ids: [kbId],
+      question,
+      top_n: Number(document.getElementById("debugTopN").value || 6),
+    })),
+  });
+  if (!(r.body && r.body.code === 0)) {
+    showMsg(document.getElementById("debugMsg"), "调试失败: " + JSON.stringify(r.body), false);
+    return;
+  }
+  const data = r.body.data || {};
+  const chunks = data.text_chunks || [];
+  document.getElementById("debugChunks").innerHTML = chunks.length ? chunks.map((c, i) => {
+    const score = c.similarity || c.vector_similarity || c.term_similarity || c._score || "";
+    const name = c.document_name || c.doc_name || c.docnm_kwd || c.document_id || `文本块 ${i + 1}`;
+    const content = c.content || c.content_with_weight || c.text || "";
+    return `<div class="ref-block">
+      <div class="ref-title">${esc(name)} ${score ? "· " + esc(fmtScore(score)) : ""}</div>
+      <div class="ref-text">${esc(content)}</div>
+    </div>`;
+  }).join("") : '<span class="hint">没有文本召回结果</span>';
+  const pages = data.vision_pages || [];
+  document.getElementById("debugPages").innerHTML = pages.length ? pages.map((p, i) => {
+    const url = pageSrc(p);
+    if (!url) return "";
+    return `<div><img onclick="previewImage('${url}','视觉召回${i + 1}')" src="${url}" alt="视觉召回${i + 1}"><div class="hint">${esc(p.doc_name || p.document_name || p.document_id || "页图")} · p${esc(p.page_no || p.page || i + 1)}</div></div>`;
+  }).join("") : '<span class="hint">没有视觉召回结果</span>';
+  document.getElementById("debugContext").textContent = data.context_preview || "暂无上下文";
+  showMsg(document.getElementById("debugMsg"), `检索完成：文本 ${chunks.length} 条，页图 ${pages.length} 张`);
+}
+
+/* ================= 检索策略 ================= */
+async function loadRetrievalStrategy() {
+  const r = await api("/v1/retrieval/strategy/get", { method: "GET" });
+  if (!(r.body && r.body.code === 0)) {
+    showMsg(document.getElementById("strategyMsg"), "加载策略失败: " + JSON.stringify(r.body), false);
+    return;
+  }
+  const data = r.body.data || {};
+  const strategy = data.strategy || {};
+  const methods = data.methods || [];
+  const methodSel = document.getElementById("strategyMethod");
+  if (methodSel) {
+    methodSel.innerHTML = methods.length
+      ? methods.map(m => `<option value="${escAttr(m.value)}">${esc(m.label || m.value)}</option>`).join("")
+      : '<option value="hybrid">hybrid 混合检索</option>';
+    methodSel.value = strategy.retrieval_method || "hybrid";
+  }
+  document.getElementById("strategyTopN").value = strategy.top_n || 6;
+  document.getElementById("strategyTopK").value = strategy.top_k || 1024;
+  document.getElementById("strategyThreshold").value = strategy.similarity_threshold ?? 0.2;
+  document.getElementById("strategyVectorWeight").value = strategy.vector_similarity_weight ?? 0.3;
+  document.getElementById("strategyRerank").value = strategy.rerank_id || "";
+}
+
+async function saveRetrievalStrategy() {
+  const body = {
+    retrieval_method: document.getElementById("strategyMethod").value || "hybrid",
+    top_n: Number(document.getElementById("strategyTopN").value || 6),
+    top_k: Number(document.getElementById("strategyTopK").value || 1024),
+    similarity_threshold: Number(document.getElementById("strategyThreshold").value || 0),
+    vector_similarity_weight: Number(document.getElementById("strategyVectorWeight").value || 0),
+    rerank_id: document.getElementById("strategyRerank").value.trim(),
+  };
+  const r = await api("/v1/retrieval/strategy/save", { method: "POST", body: JSON.stringify(body) });
+  if (r.body && r.body.code === 0) {
+    showMsg(document.getElementById("strategyMsg"), "检索策略已保存");
+    loadRetrievalStrategy();
+  } else {
+    showMsg(document.getElementById("strategyMsg"), "保存失败: " + JSON.stringify(r.body), false);
+  }
+}
+
+/* ================= 多模式对比 ================= */
+async function loadCompareKbSelect() {
+  const r = await api("/v1/kb/list", { method: "POST", body: JSON.stringify(tenantBody({ page: 1, page_size: 100 })) });
+  const sel = document.getElementById("compareKb");
+  if (!sel) return;
+  sel.innerHTML = "";
+  if (r.body && r.body.code === 0) {
+    (r.body.data.kbs || []).forEach(k => {
+      const opt = document.createElement("option");
+      opt.value = k.id;
+      opt.textContent = `${k.name} [${modeText(k.rag_mode)}]`;
+      sel.appendChild(opt);
+    });
+    if (state.kbId) sel.value = state.kbId;
+  }
+}
+
+async function runRetrievalCompare() {
+  const kbId = document.getElementById("compareKb")?.value || "";
+  const question = document.getElementById("compareQuestion")?.value.trim() || "";
+  const box = document.getElementById("compareResults");
+  if (!kbId || !question) return showMsg(document.getElementById("compareMsg"), "请选择知识库并输入问题", false);
+  box.innerHTML = '<div class="card"><span class="loading">正在对比三种模式...</span></div>';
+  const r = await api("/v1/retrieval/compare", {
+    method: "POST",
+    body: JSON.stringify(tenantBody({
+      kb_ids: [kbId],
+      question,
+      top_n: Number(document.getElementById("compareTopN").value || 6),
+      modes: ["text", "vision", "hybrid"],
+    })),
+  });
+  if (!(r.body && r.body.code === 0)) {
+    showMsg(document.getElementById("compareMsg"), "对比失败: " + JSON.stringify(r.body), false);
+    box.innerHTML = "";
+    return;
+  }
+  const rows = (r.body.data && r.body.data.results) || [];
+  box.innerHTML = rows.map(renderCompareCard).join("");
+  showMsg(document.getElementById("compareMsg"), "对比完成");
+}
+
+function renderCompareCard(row) {
+  const chunks = row.text_chunks || [];
+  const pages = row.vision_pages || [];
+  const summary = row.summary || {};
+  const mode = row.rag_mode || "";
+  const title = mode === "text" ? "文本 RAG" : mode === "vision" ? "视觉 RAG" : "混合 RAG";
+  const chunkHtml = chunks.length ? chunks.slice(0, 3).map((c, i) => {
+    const name = c.document_name || c.doc_name || c.docnm_kwd || c.document_id || `文本块 ${i + 1}`;
+    const score = c.similarity || c.vector_similarity || c.term_similarity || c._score || "";
+    const content = c.content || c.content_with_weight || c.text || "";
+    return `<div class="ref-block">
+      <div class="ref-title">${esc(name)} ${score ? "· " + esc(fmtScore(score)) : ""}</div>
+      <div class="ref-text">${esc(content)}</div>
+    </div>`;
+  }).join("") : '<div class="hint">无文本召回</div>';
+  const pageHtml = pages.length ? `<div class="page-gallery">${pages.slice(0, 3).map((p, i) => {
+    const url = pageSrc(p);
+    if (!url) return "";
+    return `<div><img onclick="previewImage('${url}','${escAttr(title)}页图${i + 1}')" src="${url}" alt="${escAttr(title)}页图${i + 1}"><div class="hint">页码 ${esc(p.page_no || p.page || "-")} ${p.score ? "· " + esc(fmtScore(p.score)) : ""}</div></div>`;
+  }).join("")}</div>` : '<div class="hint">无视觉页图</div>';
+  return `<div class="card">
+    <h3>${esc(title)} <span class="badge ${row.status === "failed" ? "err" : "ok"}">${esc(row.status || "success")}</span></h3>
+    <div class="check-list">
+      <div class="check-row"><span>文本召回</span><span class="badge run">${summary.text_hit_count || chunks.length}</span></div>
+      <div class="check-row"><span>视觉页图</span><span class="badge run">${summary.vision_hit_count || pages.length}</span></div>
+      <div class="check-row"><span>引用可用</span><span class="badge ${summary.has_reference ? "ok" : "warn"}">${summary.has_reference ? "是" : "否"}</span></div>
+    </div>
+    ${row.error ? `<div class="msg err" style="display:block">${esc(row.error)}</div>` : ""}
+    <h3 style="margin-top:14px">文本依据</h3>${chunkHtml}
+    <h3 style="margin-top:14px">页图依据</h3>${pageHtml}
+  </div>`;
+}
+
+/* ================= 评测数据集 ================= */
+async function loadEvalKbSelect() {
+  const r = await api("/v1/kb/list", { method: "POST", body: JSON.stringify(tenantBody({ page: 1, page_size: 100 })) });
+  const sel = document.getElementById("evalKb");
+  if (!sel) return;
+  sel.innerHTML = "";
+  if (r.body && r.body.code === 0) {
+    (r.body.data.kbs || []).forEach(k => {
+      const opt = document.createElement("option");
+      opt.value = k.id;
+      opt.textContent = `${k.name} [${modeText(k.rag_mode)}]`;
+      sel.appendChild(opt);
+    });
+    if (state.kbId) sel.value = state.kbId;
+  }
+}
+
+async function loadEvalQuestions() {
+  const kbId = document.getElementById("evalKb")?.value || "";
+  const r = await api("/v1/evaluation/question/list?" + tenantQuery(kbId ? { kb_id: kbId } : {}), { method: "GET" });
+  const tbody = document.querySelector("#evalTable tbody");
+  if (!tbody) return;
+  if (!(r.body && r.body.code === 0)) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--err)">加载失败: ${esc(JSON.stringify(r.body))}</td></tr>`;
+    return;
+  }
+  state.evalQuestions = r.body.data || [];
+  tbody.innerHTML = state.evalQuestions.length ? state.evalQuestions.map(q => `<tr>
+    <td>${esc(q.kb_id)}</td><td>${esc(q.question)}</td><td>${esc(q.expected_answer || "")}</td>
+    <td>${q.status === "1" ? '<span class="badge ok">启用</span>' : '<span class="badge warn">禁用</span>'}</td>
+    <td><button class="small" onclick="editEvalQuestion('${escAttr(q.id)}')">编辑</button> <button class="small danger" onclick="removeEvalQuestion('${escAttr(q.id)}')">删除</button></td>
+  </tr>`).join("") : '<tr><td colspan="5" class="hint">暂无评测问题</td></tr>';
+}
+
+function editEvalQuestion(id) {
+  const q = state.evalQuestions.find(item => item.id === id);
+  if (!q) return;
+  document.getElementById("evalId").value = q.id || "";
+  document.getElementById("evalKb").value = q.kb_id || "";
+  document.getElementById("evalQuestion").value = q.question || "";
+  document.getElementById("evalExpected").value = q.expected_answer || "";
+}
+
+function resetEvalForm() {
+  document.getElementById("evalId").value = "";
+  document.getElementById("evalQuestion").value = "";
+  document.getElementById("evalExpected").value = "";
+}
+
+async function saveEvalQuestion() {
+  const body = tenantBody({
+    id: document.getElementById("evalId").value.trim(),
+    kb_id: document.getElementById("evalKb").value,
+    question: document.getElementById("evalQuestion").value.trim(),
+    expected_answer: document.getElementById("evalExpected").value.trim(),
+    tags: [],
+    status: "1",
+  });
+  if (!body.kb_id || !body.question) return showMsg(document.getElementById("evalMsg"), "请选择知识库并填写问题", false);
+  const r = await api("/v1/evaluation/question/save", { method: "POST", body: JSON.stringify(body) });
+  if (r.body && r.body.code === 0) {
+    showMsg(document.getElementById("evalMsg"), "评测问题已保存");
+    resetEvalForm();
+    loadEvalQuestions();
+    loadEvalResults();
+  } else {
+    showMsg(document.getElementById("evalMsg"), "保存失败: " + JSON.stringify(r.body), false);
+  }
+}
+
+async function removeEvalQuestion(id) {
+  if (!confirm("确认删除该评测问题？")) return;
+  const r = await api("/v1/evaluation/question/rm", { method: "POST", body: JSON.stringify(tenantBody({ id })) });
+  if (r.body && r.body.code === 0) loadEvalQuestions(); else toast("删除失败: " + JSON.stringify(r.body), false);
+}
+
+async function runEval() {
+  const kbId = document.getElementById("evalKb")?.value || "";
+  if (!kbId) return showMsg(document.getElementById("evalMsg"), "请先选择知识库", false);
+  showMsg(document.getElementById("evalMsg"), "正在运行评测，请稍候...");
+  const r = await api("/v1/evaluation/run", {
+    method: "POST",
+    body: JSON.stringify(tenantBody({ kb_id: kbId, top_n: 6 })),
+  });
+  if (r.body && r.body.code === 0) {
+    const d = r.body.data || {};
+    showMsg(document.getElementById("evalMsg"), `评测完成：${d.total || 0} 条，平均分 ${d.avg_score || 0}`);
+    renderEvalResults(d.results || []);
+  } else {
+    showMsg(document.getElementById("evalMsg"), "评测失败: " + JSON.stringify(r.body), false);
+  }
+}
+
+async function loadEvalResults() {
+  const kbId = document.getElementById("evalKb")?.value || "";
+  const r = await api("/v1/evaluation/result/list?" + tenantQuery(kbId ? { kb_id: kbId } : {}), { method: "GET" });
+  if (r.body && r.body.code === 0) renderEvalResults(r.body.data || []);
+}
+
+function renderEvalResults(rows) {
+  const tbody = document.querySelector("#evalResultTable tbody");
+  if (!tbody) return;
+  const avg = rows.length ? (rows.reduce((n, r) => n + Number(r.score || 0), 0) / rows.length).toFixed(3) : "0";
+  document.getElementById("evalSummary").textContent = rows.length ? `最近 ${rows.length} 条 · 平均分 ${avg}` : "";
+  tbody.innerHTML = rows.length ? rows.map(r => `<tr>
+    <td>${esc(r.create_date || "")}</td><td>${esc(r.question || "")}</td>
+    <td>${r.text_hit_count || 0} / ${r.vision_hit_count || 0}</td>
+    <td>${r.expected_hit === "1" ? '<span class="badge ok">命中</span>' : '<span class="badge warn">未命中</span>'}</td>
+    <td>${Number(r.score || 0).toFixed(2)}</td>
+    <td>${r.status === "failed" ? '<span class="badge err">失败</span>' : '<span class="badge ok">成功</span>'}</td>
+    <td>${esc(r.error || "")}</td>
+  </tr>`).join("") : '<tr><td colspan="7" class="hint">暂无评测结果</td></tr>';
+}
+
+/* ================= 助手管理 ================= */
+async function loadAssistantAdmin() {
+  await Promise.all([loadAssistantAdminOptions(), loadAssistantAdminList()]);
+}
+
+async function loadAssistantAdminOptions() {
+  const [kbRes, modelRes, retrievalRes] = await Promise.all([
+    api("/v1/kb/list", { method: "POST", body: JSON.stringify(tenantBody({ page: 1, page_size: 200 })) }),
+    api("/v1/llm/list?" + tenantQuery({ model_type: "chat", flat: "1" }), { method: "GET" }),
+    api("/v1/retrieval/list", { method: "GET" }),
+  ]);
+  const kbSel = document.getElementById("assistantKbs");
+  if (kbSel && kbRes.body && kbRes.body.code === 0) {
+    kbSel.innerHTML = (kbRes.body.data.kbs || []).map(k => `<option value="${escAttr(k.id)}">${esc(k.name)} [${modeText(k.rag_mode)}]</option>`).join("");
+  }
+  const modelSel = document.getElementById("assistantModel");
+  if (modelSel && modelRes.body && modelRes.body.code === 0) {
+    const models = modelRes.body.data || [];
+    modelSel.innerHTML = '<option value="">默认模型</option>' + models.map(m => `<option value="${escAttr(m.llm_name || m.model_name || m.name || "")}">${esc(m.llm_name || m.model_name || m.name || "")}</option>`).join("");
+  }
+  const retrievalSel = document.getElementById("assistantRetrieval");
+  if (retrievalSel && retrievalRes.body && retrievalRes.body.code === 0) {
+    const methods = retrievalRes.body.data || [];
+    retrievalSel.innerHTML = methods.map(m => `<option value="${escAttr(m.value)}">${esc(m.label || m.value)}</option>`).join("") || '<option value="hybrid">hybrid</option>';
+  }
+}
+
+async function loadAssistantAdminList() {
+  const r = await api("/v1/assistant/list?page=1&page_size=100", { method: "GET" });
+  const tbody = document.querySelector("#assistantAdminTable tbody");
+  if (!tbody) return;
+  if (!(r.body && r.body.code === 0)) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--err)">加载失败: ${esc(JSON.stringify(r.body))}</td></tr>`;
+    return;
+  }
+  state.assistants = r.body.data.assistants || [];
+  tbody.innerHTML = state.assistants.length ? state.assistants.map(a => `<tr>
+    <td>${esc(a.assistant_key || "")}</td><td>${esc(a.assistant_name || "")}</td><td>${esc(a.assistant_type || "")}</td>
+    <td>${a.status === "1" ? '<span class="badge ok">启用</span>' : '<span class="badge warn">禁用</span>'}</td>
+    <td><button class="small" onclick="editAssistantAdmin('${escAttr(a.id)}')">编辑</button></td>
+  </tr>`).join("") : '<tr><td colspan="5" class="hint">暂无助手</td></tr>';
+}
+
+async function editAssistantAdmin(id) {
+  const r = await api("/v1/assistant/detail?id=" + encodeURIComponent(id), { method: "GET" });
+  if (!(r.body && r.body.code === 0)) return toast("加载助手详情失败: " + JSON.stringify(r.body), false);
+  const data = r.body.data || {};
+  const s = data.assistant_setting || {};
+  const p = data.prompt_engine || {};
+  const m = data.model_setting || {};
+  document.getElementById("assistantId").value = s.id || id;
+  document.getElementById("assistantKey").value = s.assistant_key || "";
+  document.getElementById("assistantName").value = s.assistant_name || "";
+  document.getElementById("assistantType").value = s.assistant_type || "conversation";
+  document.getElementById("assistantPromptKey").value = p.config_key || p.prompt_config_key || "chat";
+  document.getElementById("assistantModel").value = m.model_name || "";
+  document.getElementById("assistantRetrieval").value = s.retrieval_method || "hybrid";
+  document.getElementById("assistantStatus").value = s.status || "1";
+  document.getElementById("assistantTopN").value = s.top_n || 6;
+  document.getElementById("assistantThreshold").value = s.similarity_threshold ?? 0.2;
+  document.getElementById("assistantVectorWeight").value = s.vector_similarity_weight ?? 0.3;
+  document.getElementById("assistantRerank").value = s.rerank_id || "";
+  document.getElementById("assistantPrologue").value = s.prologue || "";
+  const kbIds = new Set(s.kb_ids || []);
+  Array.from(document.getElementById("assistantKbs").options).forEach(opt => { opt.selected = kbIds.has(opt.value); });
+}
+
+function resetAssistantAdmin() {
+  ["assistantId", "assistantKey", "assistantName", "assistantRerank", "assistantPrologue"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+  document.getElementById("assistantPromptKey").value = "chat";
+  document.getElementById("assistantType").value = "conversation";
+  document.getElementById("assistantStatus").value = "1";
+  document.getElementById("assistantTopN").value = 6;
+  document.getElementById("assistantThreshold").value = 0.2;
+  document.getElementById("assistantVectorWeight").value = 0.3;
+  Array.from(document.getElementById("assistantKbs").options).forEach(opt => { opt.selected = false; });
+}
+
+async function saveAssistantAdmin() {
+  const kbIds = Array.from(document.getElementById("assistantKbs").selectedOptions).map(opt => opt.value);
+  const body = {
+    id: document.getElementById("assistantId").value.trim(),
+    assistant_key: document.getElementById("assistantKey").value.trim(),
+    assistant_name: document.getElementById("assistantName").value.trim(),
+    assistant_type: document.getElementById("assistantType").value,
+    prompt_config_key: document.getElementById("assistantPromptKey").value.trim() || "chat",
+    model_name: document.getElementById("assistantModel").value,
+    retrieval_method: document.getElementById("assistantRetrieval").value || "hybrid",
+    similarity_threshold: Number(document.getElementById("assistantThreshold").value || 0),
+    vector_similarity_weight: Number(document.getElementById("assistantVectorWeight").value || 0),
+    top_n: Number(document.getElementById("assistantTopN").value || 6),
+    rerank_id: document.getElementById("assistantRerank").value.trim(),
+    kb_ids: kbIds,
+    prologue: document.getElementById("assistantPrologue").value.trim(),
+    status: document.getElementById("assistantStatus").value,
+  };
+  if (!body.assistant_key || !body.assistant_name) return showMsg(document.getElementById("assistantAdminMsg"), "请填写助手 Key 和名称", false);
+  if (!body.id) delete body.id;
+  const r = await api("/v1/assistant/set", { method: "POST", body: JSON.stringify(body) });
+  if (r.body && r.body.code === 0) {
+    showMsg(document.getElementById("assistantAdminMsg"), "助手已保存");
+    resetAssistantAdmin();
+    await loadAssistantAdminList();
+    await loadAssistants();
+  } else {
+    showMsg(document.getElementById("assistantAdminMsg"), "保存失败: " + JSON.stringify(r.body), false);
+  }
+}
+
+/* ================= 配额成本 ================= */
+async function loadQuotaCost() {
+  const [quotaRes, costRes] = await Promise.all([
+    api("/v1/tenant/quota/get?" + tenantQuery(), { method: "GET" }),
+    api("/v1/ops/cost/summary?" + tenantQuery(), { method: "GET" }),
+  ]);
+  if (quotaRes.body && quotaRes.body.code === 0) renderQuota(quotaRes.body.data || {});
+  if (costRes.body && costRes.body.code === 0) renderCost(costRes.body.data || {});
+}
+
+function pct(used, quota) {
+  if (!quota) return "-";
+  return `${used || 0}/${quota} (${Math.min(100, Math.round((used || 0) * 100 / quota))}%)`;
+}
+
+function renderQuota(q) {
+  const u = q.usage || {};
+  document.getElementById("quotaStorage").value = q.storage_quota_mb || 0;
+  document.getElementById("quotaDocuments").value = q.document_quota || 0;
+  document.getElementById("quotaTokens").value = q.token_quota || 0;
+  document.getElementById("quotaVisionPages").value = q.vision_page_quota || 0;
+  document.getElementById("quotaModelCalls").value = q.model_call_quota || 0;
+  document.getElementById("quotaDoc").textContent = pct(u.document_used, q.document_quota);
+  document.getElementById("quotaToken").textContent = pct(u.token_used, q.token_quota);
+  document.getElementById("quotaVision").textContent = pct(u.vision_page_used, q.vision_page_quota);
+}
+
+function renderCost(d) {
+  document.getElementById("costTotal").textContent = `${d.estimated_cost || 0} ${d.currency || ""}`;
+  document.getElementById("costNote").textContent = d.pricing_note || "";
+  const tbody = document.querySelector("#costTable tbody");
+  const rows = d.items || [];
+  if (!tbody) return;
+  tbody.innerHTML = rows.length ? rows.map(r => `<tr>
+    <td>${esc(r.model || "-")}</td><td>${esc(r.call_type || "")}</td><td>${r.calls || 0}</td>
+    <td>${r.prompt_tokens || 0}</td><td>${r.completion_tokens || 0}</td><td>${r.estimated_cost || 0}</td>
+  </tr>`).join("") : '<tr><td colspan="6" class="hint">暂无成本数据</td></tr>';
+}
+
+async function saveQuota() {
+  const body = tenantBody({
+    storage_quota_mb: Number(document.getElementById("quotaStorage").value || 0),
+    document_quota: Number(document.getElementById("quotaDocuments").value || 0),
+    token_quota: Number(document.getElementById("quotaTokens").value || 0),
+    vision_page_quota: Number(document.getElementById("quotaVisionPages").value || 0),
+    model_call_quota: Number(document.getElementById("quotaModelCalls").value || 0),
+    status: "1",
+  });
+  const r = await api("/v1/tenant/quota/save", { method: "POST", body: JSON.stringify(body) });
+  if (r.body && r.body.code === 0) {
+    showMsg(document.getElementById("quotaCostMsg"), "配额已保存");
+    renderQuota(r.body.data || {});
+  } else {
+    showMsg(document.getElementById("quotaCostMsg"), "保存失败: " + JSON.stringify(r.body), false);
+  }
+}
+
+/* ================= 质量看板 / 健康监控 ================= */
+async function loadQuality() {
+  const r = await api("/v1/ops/quality/summary?" + tenantQuery(), { method: "GET" });
+  const tbody = document.querySelector("#qualityTable tbody");
+  if (!tbody) return;
+  if (!(r.body && r.body.code === 0)) {
+    tbody.innerHTML = `<tr><td colspan="2" style="color:var(--err)">加载失败: ${esc(JSON.stringify(r.body))}</td></tr>`;
+    return;
+  }
+  const d = r.body.data || {};
+  document.getElementById("qualitySatisfaction").textContent = Math.round((d.satisfaction_rate || 0) * 100) + "%";
+  document.getElementById("qualityScore").textContent = Number(d.avg_score || 0).toFixed(2);
+  document.getElementById("qualityHit").textContent = Math.round((d.expected_hit_rate || 0) * 100) + "%";
+  document.getElementById("qualityRef").textContent = Math.round((d.reference_rate || 0) * 100) + "%";
+  const rows = [
+    ["反馈总数", d.feedback_total || 0],
+    ["有用反馈", d.useful || 0],
+    ["无用反馈", d.useless || 0],
+    ["评测总数", d.eval_total || 0],
+    ["评测成功数", d.eval_success || 0],
+    ["主要无用原因", (d.by_reason || []).map(x => `${x.reason || "未填"}:${x.count}`).join("，") || "-"],
+  ];
+  tbody.innerHTML = rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(String(v))}</td></tr>`).join("");
+}
+
+async function loadHealth() {
+  const r = await api("/v1/ops/health", { method: "GET" });
+  const tbody = document.querySelector("#healthTable tbody");
+  if (!tbody) return;
+  if (!(r.body && r.body.code === 0)) {
+    tbody.innerHTML = `<tr><td colspan="3" style="color:var(--err)">加载失败: ${esc(JSON.stringify(r.body))}</td></tr>`;
+    return;
+  }
+  const d = r.body.data || {};
+  const checks = d.checks || {};
+  document.getElementById("healthMsg").className = "msg " + (d.status === "ok" ? "ok" : "err");
+  document.getElementById("healthMsg").textContent = d.status === "ok" ? "系统健康" : "系统存在降级组件";
+  tbody.innerHTML = Object.entries(checks).map(([name, item]) => `<tr>
+    <td>${esc(name)}</td>
+    <td>${item.status === "ok" ? '<span class="badge ok">OK</span>' : '<span class="badge err">FAILED</span>'}</td>
+    <td>${esc(item.message || "")}</td>
+  </tr>`).join("");
+  await loadAlerts();
+}
+
+async function loadAlerts() {
+  const tbody = document.querySelector("#alertTable tbody");
+  if (!tbody) return;
+  const r = await api("/v1/ops/alert/list?" + tenantQuery({ status: "" }), { method: "GET" });
+  if (!(r.body && r.body.code === 0)) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--err)">加载失败: ${esc(JSON.stringify(r.body))}</td></tr>`;
+    return;
+  }
+  const rows = r.body.data || [];
+  tbody.innerHTML = rows.length ? rows.map(a => `<tr>
+    <td>${esc(a.create_date || "")}</td>
+    <td>${a.level === "critical" ? '<span class="badge err">critical</span>' : '<span class="badge warn">' + esc(a.level || "warning") + '</span>'}</td>
+    <td>${esc(a.title || "")}<div class="hint">${esc(a.message || "")}</div></td>
+    <td>${a.status === "open" ? '<span class="badge err">open</span>' : '<span class="badge ok">resolved</span>'}</td>
+    <td>${a.status === "open" ? `<button class="small secondary" onclick="resolveAlert('${escAttr(a.id)}')">解决</button>` : ""}</td>
+  </tr>`).join("") : '<tr><td colspan="5" class="hint">暂无告警</td></tr>';
+}
+
+async function resolveAlert(id) {
+  const r = await api("/v1/ops/alert/resolve", { method: "POST", body: JSON.stringify(tenantBody({ id })) });
+  if (r.body && r.body.code === 0) loadAlerts(); else toast("处理失败: " + JSON.stringify(r.body), false);
+}
+
+async function runSafetyCheck() {
+  const text = document.getElementById("safetyText").value || "";
+  const r = await api("/v1/ops/safety/check", { method: "POST", body: JSON.stringify(tenantBody({ text })) });
+  const tbody = document.querySelector("#safetyTable tbody");
+  if (!(r.body && r.body.code === 0)) {
+    showMsg(document.getElementById("safetyMsg"), "检查失败: " + JSON.stringify(r.body), false);
+    return;
+  }
+  const d = r.body.data || {};
+  showMsg(document.getElementById("safetyMsg"), d.safe ? "未命中基础风险规则" : d.suggestion, d.safe);
+  const hits = d.hits || [];
+  tbody.innerHTML = hits.length ? hits.map(h => `<tr>
+    <td>${esc(h.risk_type || "")}</td>
+    <td>${h.level === "high" ? '<span class="badge err">高</span>' : '<span class="badge warn">中</span>'}</td>
+    <td>${esc((h.keywords || []).join(", "))}</td>
+  </tr>`).join("") : '<tr><td colspan="3" class="hint">未命中风险</td></tr>';
+}
+
+/* ================= 用量统计 ================= */
+async function loadUsage() {
+  const base = {
+    user_id: document.getElementById("usageUser")?.value.trim() || "",
+    model: document.getElementById("usageModel")?.value.trim() || "",
+  };
+  const summary = await api("/v1/ops/usage/summary?" + tenantQuery(base), { method: "GET" });
+  if (summary.body && summary.body.code === 0) {
+    const d = summary.body.data || {};
+    document.getElementById("usageCalls").textContent = d.calls || 0;
+    document.getElementById("usageFailed").textContent = d.failed || 0;
+    document.getElementById("usageTokens").textContent = d.total_tokens || 0;
+    document.getElementById("usageAvg").textContent = (d.avg_duration_ms || 0) + "ms";
+  }
+  const r = await api("/v1/ops/usage/list?" + tenantQuery({ ...base, page: "1", page_size: "100" }), { method: "GET" });
+  const tbody = document.querySelector("#usageTable tbody");
+  if (!tbody) return;
+  if (!(r.body && r.body.code === 0)) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--err)">加载失败: ${esc(JSON.stringify(r.body))}</td></tr>`;
+    return;
+  }
+  const rows = r.body.data.logs || [];
+  tbody.innerHTML = rows.length ? rows.map(u => `<tr>
+    <td>${esc(u.create_date || "")}</td><td>${esc(u.user_id || "")}</td><td>${esc(u.model || "")}</td>
+    <td>${esc((u.kb_ids || []).join(","))}</td><td>${u.total_tokens || 0}</td><td>${u.duration_ms || 0}ms</td>
+    <td>${u.status === "failed" ? '<span class="badge err">失败</span>' : '<span class="badge ok">成功</span>'}</td>
+  </tr>`).join("") : '<tr><td colspan="7" class="hint">暂无用量数据</td></tr>';
+}
+
+/* ================= 审计安全 ================= */
+let auditSeq = 0;
+async function loadAudit() {
+  const seq = ++auditSeq;
+  const params = {
+    user_id: document.getElementById("auditUser")?.value.trim() || "",
+    action: document.getElementById("auditAction")?.value.trim() || "",
+    resource_type: document.getElementById("auditResource")?.value.trim() || "",
+    page: "1",
+    page_size: "100",
+  };
+  const r = await api("/v1/ops/audit/list?" + tenantQuery(params), { method: "GET" });
+  if (seq !== auditSeq) return;
+  const tbody = document.querySelector("#auditTable tbody");
+  if (!tbody) return;
+  if (!(r.body && r.body.code === 0)) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--err)">加载失败: ${esc(JSON.stringify(r.body))}</td></tr>`;
+    return;
+  }
+  const rows = r.body.data.logs || [];
+  tbody.innerHTML = rows.length ? rows.map(a => `<tr>
+    <td>${esc(a.create_date || "")}</td><td>${esc(a.user_id || "")}</td><td>${esc(a.action || "")}</td>
+    <td>${esc(a.resource_type || "")}</td><td>${esc(a.resource_id || "")}</td>
+    <td>${a.status === "failed" ? '<span class="badge err">失败</span>' : '<span class="badge ok">' + esc(a.status || "success") + '</span>'}</td>
+    <td style="max-width:320px;word-break:break-word">${esc(JSON.stringify(a.detail || {}))}</td>
+  </tr>`).join("") : '<tr><td colspan="7" class="hint">暂无审计日志</td></tr>';
+}
+
+/* ================= 首页概览 ================= */
+async function loadHome() {
+  const [kbRes, healthRes] = await Promise.all([
+    api("/v1/kb/list", { method: "POST", body: JSON.stringify(tenantBody({ page: 1, page_size: 500 })) }),
+    api("/v1/ops/health", { method: "GET" }),
+  ]);
+  if (kbRes.body && kbRes.body.code === 0) {
+    const kbs = kbRes.body.data.kbs || [];
+    const docCount = kbs.reduce((n, k) => n + Number(k.doc_num || 0), 0);
+    const chunkCount = kbs.reduce((n, k) => n + Number(k.chunk_num || 0), 0);
+    const pageCount = kbs.reduce((n, k) => n + Number(k.page_num || 0), 0);
+    document.getElementById("homeKbCount").textContent = kbs.length;
+    document.getElementById("homeDocCount").textContent = docCount;
+    document.getElementById("homeChunkCount").textContent = chunkCount;
+    document.getElementById("homePageCount").textContent = pageCount;
+    const cards = document.getElementById("homeKbCards");
+    if (cards) {
+      cards.innerHTML = kbs.length ? kbs.slice(0, 8).map(k => `
+        <div class="kb-card" onclick="selectKb('${escAttr(k.id)}')">
+          <div class="name">${esc(k.name)}</div>
+          <div class="meta"><span>${modeBadge(k.rag_mode)}</span><span>${k.doc_num || 0} 文档</span></div>
+          <div class="meta" style="margin-top:8px"><span>切片 ${k.chunk_num || 0}</span><span>页图 ${k.page_num || 0}</span></div>
+        </div>`).join("") : '<div class="empty">还没有知识库</div>';
+    }
+  }
+  const healthBox = document.getElementById("homeHealth");
+  if (healthBox) {
+    const d = (healthRes.body && healthRes.body.code === 0) ? (healthRes.body.data || {}) : {};
+    const checks = d.checks || {};
+    const names = Object.keys(checks);
+    healthBox.innerHTML = names.length
+      ? names.map(name => {
+          const ok = checks[name]?.status === "ok";
+          return `<span class="health-chip"><i class="dot ${ok ? "ok" : "err"}"></i>${esc(name)} ${ok ? "OK" : "FAILED"}</span>`;
+        }).join("")
+      : '<span class="health-chip"><i class="dot err"></i>健康检查不可用</span>';
+  }
+}
+
+/* ================= 实验检查 ================= */
+async function loadExperimentKbSelect() {
+  const r = await api("/v1/kb/list", { method: "POST", body: JSON.stringify(tenantBody({ page: 1, page_size: 100 })) });
+  const sel = document.getElementById("expKb");
+  if (!sel) return;
+  sel.innerHTML = "";
+  if (r.body && r.body.code === 0) {
+    (r.body.data.kbs || []).forEach(k => {
+      const opt = document.createElement("option");
+      opt.value = k.id;
+      opt.textContent = `${k.name} [${k.rag_mode || "text"}]`;
+      sel.appendChild(opt);
+    });
+    if (state.kbId) sel.value = state.kbId;
+  }
+}
+
+function fillExperimentKb(id) {
+  state.kbId = id;
+  switchTabByName("exp");
+  setTimeout(() => {
+    const sel = document.getElementById("expKb");
+    if (sel) sel.value = id;
+    runExperimentCheck();
+  }, 200);
+}
+
+function switchTabByName(name) {
+  switchTab(name);
+}
+
+async function runExperimentCheck() {
+  const kbId = document.getElementById("expKb").value;
+  const q = document.getElementById("expQuestion").value.trim() || "请总结文档内容";
+  if (!kbId) {
+    showMsg(document.getElementById("expMsg"), "请先选择知识库", false);
+    return;
+  }
+  state.kbId = kbId;
+  setExperimentLoading();
+
+  const [kbRes, docRes] = await Promise.all([
+    api("/v1/kb/detail?" + tenantQuery({ kb_id: kbId }), { method: "GET" }),
+    api("/v1/document/list?" + tenantQuery({ kb_id: kbId, page: "1", page_size: "500" }), { method: "GET" }),
+  ]);
+  if (!(kbRes.body && kbRes.body.code === 0)) {
+    showMsg(document.getElementById("expMsg"), "知识库详情读取失败: " + JSON.stringify(kbRes.body), false);
+    return;
+  }
+  if (!(docRes.body && docRes.body.code === 0)) {
+    showMsg(document.getElementById("expMsg"), "文档列表读取失败: " + JSON.stringify(docRes.body), false);
+    return;
+  }
+
+  const kb = kbRes.body.data || {};
+  const docs = docRes.body.data.docs || [];
+  updateExperimentSummary(kb, docs);
+  renderExperimentChecks(kb, docs, null);
+
+  const chat = await askForExperiment(q);
+  renderExperimentChecks(kb, docs, chat);
+  renderExperimentAnswer(chat);
+}
+
+function setExperimentLoading() {
+  document.getElementById("expChecks").innerHTML = '<div class="loading">正在检查接口与索引状态...</div>';
+  document.getElementById("expAnswer").innerHTML = '<span class="loading">正在发起一次真实问答...</span>';
+  document.getElementById("expImages").innerHTML = "";
+}
+
+function updateExperimentSummary(kb, docs) {
+  const doneDocs = docs.filter(d => d.run === "1").length;
+  const vals = [
+    modeText(kb.rag_mode),
+    `${docs.length} / 完成 ${doneDocs}`,
+    String(kb.chunk_num || docs.reduce((n, d) => n + Number(d.chunk_num || 0), 0)),
+    String(kb.page_num || docs.reduce((n, d) => n + Number(d.page_num || 0), 0)),
+  ];
+  document.querySelectorAll("#expSummary .value").forEach((el, i) => { el.textContent = vals[i]; });
+}
+
+function renderExperimentChecks(kb, docs, chat) {
+  const mode = kb.rag_mode || "text";
+  const needText = mode === "text" || mode === "hybrid";
+  const needVision = mode === "vision" || mode === "hybrid";
+  const chunkNum = Number(kb.chunk_num || docs.reduce((n, d) => n + Number(d.chunk_num || 0), 0));
+  const pageNum = Number(kb.page_num || docs.reduce((n, d) => n + Number(d.page_num || 0), 0));
+  const modes = docs.map(d => d.index_modes || "").join(",");
+  const rows = [
+    ["知识库模式", modeText(mode), mode ? "ok" : "err"],
+    ["文档上传", docs.length ? `已有 ${docs.length} 个文档` : "未上传文档", docs.length ? "ok" : "err"],
+    ["文档解析", docs.some(d => d.run === "1") ? "至少 1 个文档已完成" : "还没有完成解析的文档", docs.some(d => d.run === "1") ? "ok" : "warn"],
+    ["文本索引", needText ? (chunkNum > 0 ? `已有 ${chunkNum} 个切片` : "当前模式需要文本切片，但尚未生成") : "当前模式不要求文本切片", needText ? (chunkNum > 0 ? "ok" : "warn") : "ok"],
+    ["视觉索引", needVision ? (pageNum > 0 || modes.includes("vision") ? `已有 ${pageNum || "若干"} 页图索引` : "当前模式需要视觉页图，但尚未生成") : "当前模式不要求视觉索引", needVision ? (pageNum > 0 || modes.includes("vision") ? "ok" : "warn") : "ok"],
+    ["VLM配置", needVision ? `${kb.vlm_id || "qwen-vl-plus"} / TopN ${kb.page_top_n || 3}` : "不需要 VLM", "ok"],
+  ];
+  if (chat) {
+    rows.push(["问答响应", chat.answer ? "已返回回答" : "未收到回答", chat.answer ? "ok" : "err"]);
+    rows.push(["页图引用", needVision ? (chat.pages.length || chat.images.length ? `返回 ${Math.max(chat.pages.length, chat.images.length)} 张页图` : "未返回页图引用") : "文本模式不要求页图", needVision ? (chat.pages.length || chat.images.length ? "ok" : "warn") : "ok"]);
+  }
+  document.getElementById("expChecks").innerHTML = rows.map(([name, value, status]) => {
+    return `<div class="check-row"><span>${esc(name)}</span><span class="badge ${status}">${esc(value)}</span></div>`;
+  }).join("");
+}
+
+async function askForExperiment(question) {
+  const conv = "exp_" + Date.now();
+  const body = {
+    tenant_id: currentTenant(),
+    conversation_id: conv,
+    messages: [{ role: "user", content: question }],
+    user_id: document.getElementById("chatUserId").value.trim() || "admin",
+    kb_ids: [document.getElementById("expKb").value],
+  };
+  const result = { answer: "", images: [], pages: [], error: "" };
+  try {
+    const res = await fetch(API + "/v1/conversation/completion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Tenant-Id": currentTenant(), "X-User-Id": body.user_id || "admin" },
+      body: JSON.stringify(body),
+    });
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let acc = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      acc += decoder.decode(value, { stream: true });
+      const lines = acc.split("\n");
+      acc = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        try {
+          const d = JSON.parse(line.slice(5).trim());
+          const data = d.data || {};
+          if (data.answer) result.answer = data.answer;
+          if (Array.isArray(data.images)) result.images = data.images;
+          if (data.reference && Array.isArray(data.reference.pages)) result.pages = data.reference.pages;
+        } catch (e) {}
+      }
+    }
+  } catch (e) {
+    result.error = e.message;
+  }
+  return result;
+}
+
+function renderExperimentAnswer(chat) {
+  const answerEl = document.getElementById("expAnswer");
+  const imgEl = document.getElementById("expImages");
+  if (chat.error) {
+    answerEl.innerHTML = `<span style="color:var(--err)">请求失败: ${esc(chat.error)}</span>`;
+    return;
+  }
+  answerEl.innerHTML = chat.answer || '<span class="hint">未返回回答</span>';
+  const urls = chat.images.length
+    ? chat.images.map(u => mediaUrl(u))
+    : chat.pages.map(p => pageSrc(p)).filter(Boolean);
+  imgEl.innerHTML = urls.map(u => `<img onclick="previewImage('${u}')" src="${u}" alt="页图引用">`).join("");
+}
+
+/* ================= 工具 ================= */
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function escAttr(s) { return esc(s).replace(/`/g, "&#96;"); }
+function fmtSize(n) { if (n == null) return "-"; if (n < 1024) return n + "B"; if (n < 1048576) return (n / 1024).toFixed(1) + "KB"; return (n / 1048576).toFixed(1) + "MB"; }
+function lastLine(s) { return String(s || "").split(/\r?\n/).filter(Boolean).pop() || ""; }
+function modeText(mode) { return ({ text: "普通文本", vision: "视觉多模态", hybrid: "混合" }[mode] || mode || "-"); }
+function runText(run) { return ({ "0": "未解析", "1": "完成", "2": "解析中", "3": "已取消", "-1": "失败" }[run] || run || "-"); }
+function fmtScore(score) { const n = Number(score); return Number.isFinite(n) ? n.toFixed(3) : String(score); }
+function modeBadge(mode) {
+  const cls = mode === "vision" ? "run" : mode === "hybrid" ? "ok" : "warn";
+  return `<span class="badge ${cls}">${esc(modeText(mode))}</span>`;
+}
+function indexBadges(docOrModes) {
+  const modes = typeof docOrModes === "string" || docOrModes == null
+    ? String(docOrModes || "")
+    : String(docOrModes.index_modes || "");
+  const parts = modes.split(",").map(s => s.trim()).filter(Boolean);
+  if (typeof docOrModes === "object" && docOrModes) {
+    if (Number(docOrModes.chunk_num || 0) > 0 && !parts.includes("text")) parts.unshift("text");
+    if (Number(docOrModes.page_num || 0) > 0 && !parts.includes("vision")) parts.push("vision");
+  }
+  if (!parts.length) return '<span class="badge warn">未建索</span>';
+  return parts.map(p => `<span class="badge ${p === "vision" ? "run" : "ok"}">${esc(p === "text" ? "text" : p)}</span>`).join(" ");
+}
+
+/* 初始化 */
+loadTenants();
+loadHome();
+loadModels();
+loadFactories();
+loadKbModelOptions();
+loadKbs();
+loadKbSelect();
+loadAssistants();
+loadChatModels();
+loadExperimentKbSelect();
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+# Core app deps. On Windows, skip native build packages (python-poppler / cmake / pkgconfig)
+# and vllm (Linux/CUDA). PDF pages use Byaldi -> pdf2image + Poppler binaries (pdftoppm).
+Flask
+SQLAlchemy
+pypdf
+python-docx
+redis
+minio
+elasticsearch
+byaldi
+torch
+torchvision
+google-generativeai
+openai
+docx2pdf
+qwen-vl-utils
+einops
+mistral_common>=1.4.1
+mistral_common[opencv]
+mistral_inference
+groq
+markdown
+hf_transfer
+ollama
+pdf2image
+python-dotenv
+Pillow
+accelerate
+
+# Linux-only: native Poppler C++ bindings (not used by app code; README debugging path)
+cmake; sys_platform == 'linux'
+pkgconfig; sys_platform == 'linux'
+python-poppler; sys_platform == 'linux'
+
+# Linux/CUDA only (not supported on Windows/macOS for this project)
+vllm>=0.6.1.post1; sys_platform == 'linux'

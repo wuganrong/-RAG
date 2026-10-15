@@ -1,0 +1,87 @@
+# =============================================================================
+# yf-rag 本地演示：只跑 Django + Celery
+# 复用本机已有的 mysql-standalone:3306 / redis:6379 / minio_oss:9000 / es-7.17.7:9200
+#
+# 前置条件：
+#   - Docker Desktop 启动（WSL2 后端）
+#   - 主机的 ALIYUN_API_KEY / ALIYUN_BASE_URL 环境变量已设置
+#   - 主机的 E:\code4\vlm-rag\models 目录存在（ColPali 权重）
+#   - 本机的 MySQL/Redis/MinIO/ES 都已起来（mysql-standalone / redis / minio_oss / es-7.17.7）
+#
+# 启动：docker compose up -d --build
+# 日志：docker compose logs -f django celery
+# 停止：docker compose down
+# =============================================================================
+
+name: yf-rag
+
+services:
+
+  # ---- 应用：Django (Gunicorn) ----
+  django:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: yf-rag-app:latest
+    container_name: yf-rag-django
+    command: ["django"]
+    env_file: .env
+    environment:
+      # API Key 从主机的 ALIYUN_API_KEY 注入（不写进 .env）
+      - DASHSCOPE_API_KEY=${ALIYUN_API_KEY}
+      - DASHSCOPE_BASE_URL=${ALIYUN_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+    ports:
+      - "9380:9380"
+    volumes:
+      - ./data:/app/code/data
+      - ./logs:/app/code/logs
+      - ./.trie_cache:/app/code/.trie_cache
+      # ColPali 模型权重（宿主机 → 容器只读）
+      - E:\code4\vlm-rag\models:/models:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9380/api/schema/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+    restart: unless-stopped
+
+  # ---- 应用：Celery Worker（含 vision 队列 + GPU） ----
+  celery:
+    image: yf-rag-app:latest
+    pull_policy: never
+    container_name: yf-rag-celery
+    command: ["celery"]
+    env_file: .env
+    environment:
+      - DASHSCOPE_API_KEY=${ALIYUN_API_KEY}
+      - DASHSCOPE_BASE_URL=${ALIYUN_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      - ENABLE_VISION_WORKER=True
+    volumes:
+      - ./data:/app/code/data
+      - ./logs:/app/code/logs
+      - ./.trie_cache:/app/code/.trie_cache
+      - E:\code4\vlm-rag\models:/models:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      django:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A __000__django inspect ping --timeout 10 || exit 1"]
+      interval: 30s
+      timeout: 15s
+      start_period: 120s
+      retries: 5
+    # GPU：RTX 5070 / Blackwell。需要 WSL2 后端 + nvidia-container-toolkit
+    # 如果没装 toolkit，注释掉整个 deploy 段也能跑（vision 任务会因没 GPU 失败但其他任务正常）
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped

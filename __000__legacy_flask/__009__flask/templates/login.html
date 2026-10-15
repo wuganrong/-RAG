@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>登录 · 企业双引擎 RAG</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container" style="max-width:420px;margin-top:12vh;">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4 class="mb-3">双引擎 RAG 登录</h4>
+            {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+            <form method="post">
+                <div class="mb-3">
+                    <label class="form-label">用户名</label>
+                    <input class="form-control" name="username" value="admin" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">密码</label>
+                    <input class="form-control" type="password" name="password" required>
+                </div>
+                <button class="btn btn-primary w-100" type="submit">登录</button>
+            </form>
+            <p class="form-text mt-3">默认账号 admin / admin123，登录后按角色使用上传、删除和问答配额。</p>
+        </div>
+    </div>
+</div>
+</body>
+</html>

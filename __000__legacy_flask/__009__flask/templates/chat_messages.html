@@ -1,0 +1,30 @@
+{% for message in messages %}
+    <div class="message {% if message.role == 'user' %}user-message{% else %}ai-message{% endif %}">
+        {% if message.role == 'user' %}
+            {{ message.content }}
+        {% else %}
+            {{ message.content|safe }}
+        {% endif %}
+        {% if message.citations %}
+            <div class="citation-list">
+                {% for cite in message.citations %}
+                    <div class="citation-item">
+                        [{{ loop.index }}]
+                        {% if cite.kind == 'page' %}页图{% else %}文本{% endif %}
+                        · {{ cite.doc_name or '' }}
+                        {% if cite.page_no %} p.{{ cite.page_no }}{% endif %}
+                        {% if cite.preview and cite.kind == 'chunk' %} · {{ cite.preview }}{% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% if message.images %}
+            <div class="image-container">
+                <p class="retrieved-caption">检索到的文档页（视觉检索）</p>
+                {% for image in message.images %}
+                    <img src="{{ url_for('page_image', filename=image) }}" alt="Retrieved page" class="retrieved-image zoomable">
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+{% endfor %}

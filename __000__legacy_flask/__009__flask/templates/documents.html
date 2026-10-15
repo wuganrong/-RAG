@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% block title %}文档台 · 双引擎 RAG{% endblock %}
+{% block page_title %}文档台{% endblock %}
+{% block page_subtitle %}上传、建索、重试、删除都落在当前知识库，不跟 Cookie 会话绑定{% endblock %}
+
+{% block content %}
+<div class="workbench">
+    <div class="alert alert-light border">
+        <strong>业务规则：</strong>混合库同时建文本和视觉两路。有页图时 VLM 看页图，命中的文本块作为补充；没有页图则走文本模型。建索中可取消（当前步骤结束后生效）。
+    </div>
+    <form id="doc-upload-form" class="card mb-3">
+        <div class="card-body d-flex flex-wrap gap-2 align-items-end">
+            <div class="flex-grow-1">
+                <label class="form-label">上传 PDF / 图片到「{{ current_kb.name if current_kb else '' }}」</label>
+                <input type="file" class="form-control" name="file" id="doc-file" multiple>
+            </div>
+            <button class="btn btn-primary" type="submit">提交建索</button>
+        </div>
+    </form>
+    <div class="table-responsive card">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>文档</th>
+                    <th>类型</th>
+                    <th>状态</th>
+                    <th>进度</th>
+                    <th>切块 / 页</th>
+                    <th>大小</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="doc-table">
+                {% for doc in documents %}
+                <tr data-id="{{ doc.id }}" data-run="{{ doc.run }}">
+                    <td>{{ doc.name }}</td>
+                    <td>{{ doc.type or '-' }}</td>
+                    <td class="doc-run">{{ run_labels.get(doc.run, doc.run) }}</td>
+                    <td>
+                        <div class="progress" style="height:8px;">
+                            <div class="progress-bar" style="width: {{ ((doc.progress or 0) * 100)|int }}%"></div>
+                        </div>
+                        <div class="small text-muted doc-msg">{{ doc.progress_msg or '' }}</div>
+                    </td>
+                    <td>{{ doc.chunk_num }} / {{ doc.page_num }}</td>
+                    <td>{{ '%.1f'|format((doc.size or 0) / 1024) }} KB</td>
+                    <td class="text-nowrap">
+                        {% if doc.run == '2' %}
+                        <button class="btn btn-sm btn-outline-warning cancel-doc" data-id="{{ doc.id }}">取消</button>
+                        {% endif %}
+                        {% if doc.run in ['-1', '0', '3'] %}
+                        <button class="btn btn-sm btn-outline-primary retry-doc" data-id="{{ doc.id }}">重试</button>
+                        {% endif %}
+                        <button class="btn btn-sm btn-outline-danger delete-doc" data-id="{{ doc.id }}">删除</button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-muted">当前知识库还没有文档，先上传再建索。</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var runLabels = {{ run_labels|tojson }};
+    function renderRow(doc) {
+        var pct = Math.round((doc.progress || 0) * 100);
+        var retry = (doc.run === '-1' || doc.run === '0' || doc.run === '3')
+            ? '<button class="btn btn-sm btn-outline-primary retry-doc" data-id="' + doc.id + '">重试</button> '
+            : '';
+        var cancel = (doc.run === '2')
+            ? '<button class="btn btn-sm btn-outline-warning cancel-doc" data-id="' + doc.id + '">取消</button> '
+            : '';
+        return '<tr data-id="' + doc.id + '" data-run="' + doc.run + '">' +
+            '<td>' + (doc.name || '') + '</td>' +
+            '<td>' + (doc.type || '-') + '</td>' +
+            '<td class="doc-run">' + (runLabels[doc.run] || doc.run) + '</td>' +
+            '<td><div class="progress" style="height:8px;"><div class="progress-bar" style="width:' + pct + '%"></div></div>' +
+            '<div class="small text-muted doc-msg">' + (doc.progress_msg || '') + '</div></td>' +
+            '<td>' + (doc.chunk_num || 0) + ' / ' + (doc.page_num || 0) + '</td>' +
+            '<td>' + ((doc.size || 0) / 1024).toFixed(1) + ' KB</td>' +
+            '<td class="text-nowrap">' + cancel + retry +
+            '<button class="btn btn-sm btn-outline-danger delete-doc" data-id="' + doc.id + '">删除</button></td></tr>';
+    }
+    function pollRunning() {
+        var ids = [];
+        $('#doc-table tr[data-id]').each(function() {
+            var run = $(this).data('run') + '';
+            var msg = ($(this).find('.doc-msg').text() || '');
+            if (run === '2' || run === '0' || (run === '3' && msg.indexOf('已请求取消') >= 0)) ids.push($(this).data('id'));
+        });
+        if (!ids.length) return;
+        ids.forEach(function(id) {
+            $.get('/document_status/' + id, function(resp) {
+                if (!resp.success) return;
+                var row = $('#doc-table tr[data-id="' + id + '"]');
+                row.replaceWith(renderRow(resp.document));
+            });
+        });
+    }
+    $('#doc-upload-form').submit(function(e) {
+        e.preventDefault();
+        var files = $('#doc-file')[0].files;
+        if (!files.length) {
+            alert('请先选择文件');
+            return;
+        }
+        var data = new FormData(this);
+        $.ajax({
+            url: '{{ url_for("documents") }}',
+            type: 'POST',
+            data: data,
+            processData: false,
+            contentType: false,
+            success: function(resp) {
+                if (!resp.success) {
+                    alert(resp.message || '上传失败');
+                    return;
+                }
+                window.location.reload();
+            }
+        });
+    });
+    $(document).on('click', '.cancel-doc', function() {
+        var id = $(this).data('id');
+        if (!confirm('取消后当前步骤结束后停止。ColPali 视觉建索无法中途打断。')) return;
+        $.post('/cancel_document/' + id, function(resp) {
+            if (!resp.success) {
+                alert(resp.message || '取消失败');
+                return;
+            }
+            var row = $('#doc-table tr[data-id="' + id + '"]');
+            row.replaceWith(renderRow(resp.document));
+        });
+    });
+    $(document).on('click', '.retry-doc', function() {
+        var id = $(this).data('id');
+        $.post('/retry_document/' + id, function(resp) {
+            if (!resp.success) {
+                alert(resp.message || '重试失败');
+                return;
+            }
+            window.location.reload();
+        });
+    });
+    setInterval(pollRunning, 2000);
+</script>
+{% endblock %}

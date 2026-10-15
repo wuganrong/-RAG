@@ -1,0 +1,56 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+.claude/
+.claudeignore
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker/ragflow-logs/
+*.dockerignore
+
+# 模型数据（仅排除根目录，docker/ 下的模型文件需要进入构建上下文）
+/nltk_data/
+huggingface.co/
+*.trie
+
+# 日志和输出
+/logs/
+/out/
+debug/
+
+# 文档和样本
+CLAUDE.md
+out/
+/yf_rag.egg-info/
+/.trae/
+/openspec/
+/rag/migrations/*
+/*.md
+/*.html
+/*.sql
+
+# 其他
+web/
+sdk/
+.flask_session
+.DS_Store
+Cargo.lock
+*.rs.bk
+*.pdb
+target/
+hudet/
+cv/
+layout_app.py

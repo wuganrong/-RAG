@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block title %}运维看板 · 双引擎 RAG{% endblock %}
+{% block page_title %}运维看板{% endblock %}
+{% block page_subtitle %}架构连通、配额、审计与工程约束一眼可见；探测不会在页面打开时自动打远端{% endblock %}
+
+{% block content %}
+<div class="workbench">
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <div class="card health-card">
+                <div class="card-body">
+                    <div class="small text-muted">ColPali 本地权重</div>
+                    <div class="fs-5" id="h-colpali">{{ '已就绪' if health.colpali else '未就绪' }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card health-card">
+                <div class="card-body">
+                    <div class="small text-muted">DashScope</div>
+                    <div class="fs-5" id="h-dashscope">{{ '已配置密钥' if health.dashscope else '未配置密钥' }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card health-card">
+                <div class="card-body">
+                    <div class="small text-muted">日配额</div>
+                    <div class="fs-6">问答 {{ quota.queries }}/{{ quota.query_limit }}</div>
+                    <div class="fs-6">上传 {{ quota.uploads }}/{{ quota.upload_limit }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">中间件（配置值，未探测）</h6>
+                <button class="btn btn-sm btn-outline-primary" id="probe-health">探测连通</button>
+            </div>
+            <div class="row small">
+                <div class="col-md-4"><strong>Redis</strong><div id="h-redis">{{ health.redis }}</div></div>
+                <div class="col-md-4"><strong>Elasticsearch</strong><div id="h-es">{{ health.elasticsearch }}</div></div>
+                <div class="col-md-4"><strong>MinIO</strong><div id="h-minio">{{ health.minio }}</div></div>
+            </div>
+            <p class="form-text mb-0 mt-2">探测走现有局域网栈；失败时存储/检索会回退本地，不会新起容器。</p>
+        </div>
+    </div>
+    <div class="card mb-3">
+        <div class="card-body">
+            <h6>工程优化（已落地）</h6>
+            <ul class="mb-0 small">
+                <li>同库 SHA256 去重，重复文件不再占 GPU</li>
+                <li>页图优先：有页图只走 VLM，没有页图才走文本 LLM</li>
+                <li>ColPali 多向量不进 ES 稠密字段，视觉索引独立落盘</li>
+                <li>MinIO / ES / Redis 懒加载，不通则本地回退</li>
+                <li>建索单线程队列，失败可在文档台重试</li>
+                <li>角色 + 日配额 + 审计日志</li>
+            </ul>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <h6>最近审计</h6>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr><th>时间</th><th>动作</th><th>对象</th><th>详情</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for row in audits %}
+                        <tr>
+                            <td>{{ row.create_date }}</td>
+                            <td>{{ row.action }}</td>
+                            <td>{{ row.target }}</td>
+                            <td>{{ row.detail }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-muted">暂无审计记录</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $('#probe-health').click(function() {
+        var btn = $(this);
+        btn.prop('disabled', true).text('探测中…');
+        $.get('/health?probe=1', function(data) {
+            $('#h-colpali').text(data.colpali ? '已就绪' : '未就绪');
+            $('#h-dashscope').text(data.dashscope ? '已配置密钥' : '未配置密钥');
+            $('#h-redis').text(JSON.stringify(data.redis));
+            $('#h-es').text(JSON.stringify(data.elasticsearch));
+            $('#h-minio').text(JSON.stringify(data.minio));
+        }).fail(function() {
+            alert('探测失败，请确认局域网中间件是否可达');
+        }).always(function() {
+            btn.prop('disabled', false).text('探测连通');
+        });
+    });
+</script>
+{% endblock %}

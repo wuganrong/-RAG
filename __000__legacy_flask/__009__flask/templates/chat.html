@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% block title %}对话 · 双引擎 RAG{% endblock %}
+{% block page_title %}对话{% endblock %}
+{% block page_subtitle %}混合模式：有页图时 VLM 看页图，文本块作补充；没有页图则走文本模型。引用可点开原文。{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <div class="chat-messages" id="chat-messages">
+        {% for message in chat_history %}
+            <div class="message {% if message.role == 'user' %}user-message{% else %}ai-message{% endif %}">
+                {% if message.role == 'user' %}
+                    {{ message.content }}
+                {% else %}
+                    {{ message.content|safe }}
+                {% endif %}
+                {% if message.citations %}
+                    <div class="citation-list">
+                        {% for cite in message.citations %}
+                            <div class="citation-item citation-open"
+                                 data-kind="{{ cite.kind }}"
+                                 data-image="{{ cite.image or '' }}"
+                                 data-preview="{{ cite.preview or cite.content or '' }}">
+                                [{{ loop.index }}]
+                                {% if cite.kind == 'page' %}页图{% else %}文本{% endif %}
+                                · {{ cite.doc_name or '' }}
+                                {% if cite.page_no %} p.{{ cite.page_no }}{% endif %}
+                                {% if cite.preview and cite.kind == 'chunk' %} · {{ cite.preview }}{% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% if message.images %}
+                    <div class="image-container">
+                        <p class="retrieved-caption">检索到的文档页（视觉检索）</p>
+                        {% for image in message.images %}
+                            <img src="{{ url_for('page_image', filename=image) }}" alt="检索页图" class="retrieved-image zoomable">
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+    <div class="chat-input-container">
+        <form id="chat-form">
+            <div class="input-group">
+                <input type="text" id="query" name="query" class="form-control" placeholder="输入问题，按回车发送">
+                <button class="btn btn-primary" type="submit">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            <div class="form-text mt-2">上传请到「文档」页。当前库模式：{{ current_kb.rag_mode if current_kb else '-' }}</div>
+        </form>
+    </div>
+</div>
+
+<div id="loading-indicator" class="text-center" style="display: none;">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">生成中</span>
+    </div>
+    <p>正在检索并生成…</p>
+</div>
+
+<div class="modal fade" id="citePreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">引用原文</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body" id="cite-preview-body"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        function scrollToBottom() {
+            var box = document.getElementById('chat-messages');
+            box.scrollTop = box.scrollHeight;
+        }
+        scrollToBottom();
+
+        function applyZoomToNewImages() {
+            mediumZoom('.zoomable:not(.medium-zoom-image)', {
+                margin: 24,
+                background: '#000000',
+                scrollOffset: 0
+            });
+        }
+        mediumZoom('.zoomable', { margin: 24, background: '#000000', scrollOffset: 0 });
+
+        function escapeHtml(text) {
+            return $('<div>').text(text || '').html();
+        }
+        function renderCitations(cites) {
+            if (!cites || !cites.length) return '';
+            var html = '<div class="citation-list">';
+            cites.forEach(function(cite, i) {
+                var kind = cite.kind === 'page' ? '页图' : '文本';
+                var extra = (cite.kind === 'chunk' && cite.preview) ? ' · ' + escapeHtml(cite.preview) : '';
+                var page = cite.page_no ? ' p.' + cite.page_no : '';
+                html += '<div class="citation-item citation-open" data-kind="' + (cite.kind || '') +
+                    '" data-image="' + escapeHtml(cite.image || '') +
+                    '" data-preview="' + escapeHtml(cite.preview || cite.content || '') +
+                    '">[' + (i + 1) + '] ' + kind + ' · ' + escapeHtml(cite.doc_name || '') + page + extra + '</div>';
+            });
+            return html + '</div>';
+        }
+        function renderImages(images) {
+            if (!images || !images.length) return '';
+            var html = '<div class="image-container"><p class="retrieved-caption">检索到的文档页（视觉检索）</p>';
+            images.forEach(function(image) {
+                html += '<img src="/media/pages/' + image + '" class="retrieved-image zoomable" alt="检索页图">';
+            });
+            return html + '</div>';
+        }
+
+        $('#chat-form').submit(async function(e) {
+            e.preventDefault();
+            var query = ($('#query').val() || '').trim();
+            if (!query) return;
+            $('#chat-messages').append($('<div class="message user-message"></div>').text(query));
+            var ai = $('<div class="message ai-message"><span class="stream-text"></span></div>');
+            $('#chat-messages').append(ai);
+            $('#query').val('');
+            $('#loading-indicator').show();
+            try {
+                var res = await fetch('/v1/conversation/{{ current_session }}/completion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query, stream: true })
+                });
+                if (!res.ok) {
+                    var err = await res.json().catch(function() { return {}; });
+                    throw new Error(err.message || '问答失败');
+                }
+                var reader = res.body.getReader();
+                var decoder = new TextDecoder();
+                var buf = '';
+                var cites = [];
+                while (true) {
+                    var chunk = await reader.read();
+                    if (chunk.done) break;
+                    buf += decoder.decode(chunk.value, { stream: true });
+                    var parts = buf.split('\n\n');
+                    buf = parts.pop();
+                    parts.forEach(function(block) {
+                        var line = block.trim();
+                        if (line.indexOf('data:') === 0) line = line.slice(5).trim();
+                        if (!line) return;
+                        var ev = JSON.parse(line);
+                        if (ev.event === 'token') {
+                            ai.find('.stream-text').append(document.createTextNode(ev.text || ''));
+                        }
+                        if (ev.event === 'citations') cites = ev.citations || [];
+                        if (ev.event === 'error') throw new Error(ev.message);
+                        if (ev.event === 'done') {
+                            ai.html(ev.answer_html || ai.find('.stream-text').text());
+                            ai.append(renderCitations(ev.citations || cites));
+                            ai.append(renderImages(ev.images || []));
+                            applyZoomToNewImages();
+                        }
+                    });
+                    scrollToBottom();
+                }
+            } catch (err) {
+                alert(err.message || '生成回复失败。请确认文档已建索完成。');
+            } finally {
+                $('#loading-indicator').hide();
+            }
+        });
+
+        $(document).on('click', '.citation-open', function() {
+            var kind = $(this).data('kind');
+            var image = $(this).data('image');
+            var preview = $(this).data('preview') || '无原文片段';
+            if (kind === 'page' && image) {
+                $('#cite-preview-body').html('<img src="/media/pages/' + image + '" class="img-fluid zoomable" alt="页图">');
+                applyZoomToNewImages();
+            } else {
+                $('#cite-preview-body').text(preview);
+            }
+            $('#citePreviewModal').modal('show');
+        });
+    });
+</script>
+{% endblock %}

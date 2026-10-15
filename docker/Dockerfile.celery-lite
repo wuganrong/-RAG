@@ -1,0 +1,26 @@
+FROM ghcr.io/astral-sh/uv:0.11.17-python3.10-trixie-slim
+
+WORKDIR /app/code
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    TZ=Asia/Shanghai \
+    LANG=C.UTF-8 \
+    PYTHONIOENCODING=utf-8
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        libmariadb-dev-compat \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker/requirements-celery-lite.txt /tmp/requirements-celery-lite.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r /tmp/requirements-celery-lite.txt
+
+COPY . ./
+
+RUN sed -i 's/\r$//' /app/code/docker/entrypoint.sh \
+    && chmod +x /app/code/docker/entrypoint.sh
+
+ENTRYPOINT ["/app/code/docker/entrypoint.sh"]
+CMD ["celery"]
